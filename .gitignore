@@ -1,0 +1,36 @@
+# Large Media & Video files
+*.mp4
+*.m4v
+*.mov
+*.avi
+*.mkv
+
+# Large Audio Files
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+audio/
+
+# Personal / Receipt / Course PDF Documents
+*.pdf
+*.docx
+*.xlsx
+*.txt
+*.bat
+
+# Ignore older individual workouts except Latest Spin Class
+*Workout.html
+!Latest_Spin_Class_Workout.html
+!index.html
+
+# Python / Environment Caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
