@@ -1363,7 +1363,7 @@
 
         card.innerHTML = '<div class="track-card-border" style="background: ' + zoneColor + '"></div>' +
           '<div class="track-main-row">' +
-            '<div class="track-num">' + (tIdx + 1) + '</div>' + (isLastTrack ? '<span class="cooldown-badge">🧘 Cool-Down & Stretch</span>' : '') +
+            '<div class="track-num">' + (tIdx + 1) + '</div>' +
             '<div class="track-info-fields">' +
               '<input type="text" class="song-title-input" value="' + (track.name || '') + '" placeholder="Song Title" oninput="updateTrackProp(' + tIdx + ', \'name\', this.value)" />' +
               '<input type="text" class="song-artist-input" value="' + (track.artist || '') + '" placeholder="Artist / Description" oninput="updateTrackProp(' + tIdx + ', \'artist\', this.value)" />' +
@@ -1396,11 +1396,7 @@
               '<button class="icon-btn delete-btn" onclick="deleteTrack(' + tIdx + ')" title="Delete Track">🗑️</button>' +
             '</div>' +
           '</div>' +
-          (isLastTrack ? 
-            '<div class="movements-section" style="background: rgba(0, 229, 255, 0.06); border: 1px dashed rgba(0, 229, 255, 0.3); text-align: center; padding: 12px 14px;">' +
-              '<div style="font-size: 0.88rem; font-weight: 700; color: var(--accent-cyan);">🧘 Down-tempo Cool-down & Full Body Stretch</div>' +
-              '<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Relaxing down-tempo track to lower heart rate and stretch out to — no workout movements required.</div>' +
-            '</div>' :
+          (isLastTrack ? '' :
             '<div class="movements-section">' +
               '<div class="movements-label">' +
                 '<span>Spinning® Movements & Transitions (Up to 6)</span>' +
