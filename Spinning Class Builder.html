@@ -1276,17 +1276,8 @@
 
       classData.tracks.forEach((track, tIdx) => {
         const isLastTrack = (tIdx === classData.tracks.length - 1);
-        if (isLastTrack && (!track.zone || track.zone === 'Strength' || track.zone === 'Interval' || track.zone === 'Race Day')) {
-          track.zone = 'Recovery';
-          if (!track.cadence || track.cadence.includes('RPM')) {
-            track.cadence = 'Easy Spin & Stretch';
-          }
-          if (!track.cues) {
-            track.cues = 'Down-tempo cool-down. Lower heart rate, easy pedal spin, then dismount and full-body stretch out.';
-          }
-        }
         const tr = document.createElement('tr');
-        const zoneColor = ZONE_COLORS[track.zone] || '#00e676';
+        const zoneColor = isLastTrack ? '#00e5ff' : (ZONE_COLORS[track.zone] || '#00e676');
 
         let movBadges = '';
         (track.movements || []).forEach(m => {
@@ -1296,12 +1287,14 @@
         });
         if (!movBadges) movBadges = '<span style="color:var(--text-dim);">No movements</span>';
 
+        const zoneLabel = isLastTrack ? '🧘 Cool-Down & Stretch' : (track.zone || 'Endurance');
+
         tr.innerHTML = '<td style="font-weight:700; font-family:Outfit,sans-serif; color:var(--text-muted);">' + (tIdx + 1) + '</td>' +
           '<td><div style="font-weight:700; color:#fff;">' + (track.name || 'Track ' + (tIdx + 1)) + '</div><div style="font-size:0.75rem; color:var(--text-muted);">' + (track.artist || '') + '</div></td>' +
           '<td><span style="color:var(--accent-cyan); font-weight:700;">' + (track.bpm || '--') + ' BPM</span></td>' +
           '<td><span style="font-weight:600;">' + (track.cadence || '--') + '</span></td>' +
           '<td><span style="font-weight:600;">' + (track.duration || '--') + '</span></td>' +
-          '<td><span style="color:' + zoneColor + '; font-weight:700;">' + (track.zone || 'Endurance') + '</span></td>' +
+          '<td><span style="color:' + zoneColor + '; font-weight:700;">' + zoneLabel + '</span></td>' +
           '<td>' + movBadges + '</td>' +
           '<td style="font-size:0.78rem; color:var(--text-muted); max-width:280px;">' + (track.cues || '') + '</td>';
         tbody.appendChild(tr);
@@ -1319,6 +1312,21 @@
       }
 
       classData.tracks.forEach((track, tIdx) => {
+        const isLastTrack = (tIdx === classData.tracks.length - 1);
+        if (isLastTrack && (!track.zone || track.zone === 'Strength' || track.zone === 'Interval' || track.zone === 'Race Day')) {
+          track.zone = 'Recovery';
+          if (!track.cadence || track.cadence.includes('RPM')) {
+            track.cadence = 'Easy Spin & Stretch';
+          }
+          if (!track.cues) {
+            track.cues = 'Down-tempo cool-down. Lower heart rate, easy pedal spin, then dismount and full-body stretch out.';
+          }
+        }
+        if (!track.movements || !Array.isArray(track.movements)) {
+          track.movements = [null, null, null, null, null, null];
+        }
+        while (track.movements.length < 6) track.movements.push(null);
+
         const card = document.createElement('div');
         card.className = 'track-card';
         const zoneColor = ZONE_COLORS[track.zone] || '#00e676';
@@ -1893,7 +1901,7 @@
                 movs = [
                   { name: "Seated Climb", time: "2:30" },
                   { name: "Standing Climb", time: "2:30" },
-                  null, null, null
+                  null, null, null, null
                 ];
               } else {
                 cadence = rpm + " RPM (Seated Flat)";
@@ -1901,7 +1909,7 @@
                 movs = [
                   { name: "Seated Flat", time: "2:30" },
                   { name: "Running with Resistance", time: "2:30" },
-                  null, null, null
+                  null, null, null, null
                 ];
               }
             } else {
@@ -1911,7 +1919,7 @@
               movs = [
                 { name: "Seated Flat", time: "2:30" },
                 { name: "Running with Resistance", time: "2:30" },
-                null, null, null
+                null, null, null, null
               ];
             }
 
