@@ -782,18 +782,18 @@ def import_musicbee_playlist():
             if 60 <= rpm <= 80:
                 cadence = f"{rpm} RPM (Climb)"
                 zone = "Strength"
-                half_time = f"{int(dur_sec//120)}:{int((dur_sec%120)//2):02d}" if dur_sec > 60 else "1:00"
+                half_time = f"{int(dur_sec//120)}:{int((dur_sec%120)//2):02d}" if dur_sec > 60 else "1:30"
                 movements = [
-                    {"name": "Seated Climb", "time": half_time},
+                    {"name": "Seated Climb", "time": "0:00"},
                     {"name": "Standing Climb", "time": half_time},
                     None, None, None, None
                 ]
             else:
                 cadence = f"{rpm} RPM (Seated Flat)"
                 zone = "Endurance"
-                half_time = f"{int(dur_sec//120)}:{int((dur_sec%120)//2):02d}" if dur_sec > 60 else "1:00"
+                half_time = f"{int(dur_sec//120)}:{int((dur_sec%120)//2):02d}" if dur_sec > 60 else "1:30"
                 movements = [
-                    {"name": "Seated Flat", "time": half_time},
+                    {"name": "Seated Flat", "time": "0:00"},
                     {"name": "Running with Resistance", "time": half_time},
                     None, None, None, None
                 ]
@@ -804,7 +804,7 @@ def import_musicbee_playlist():
             zone = "Endurance"
             half_time = f"{int(dur_sec//120)}:{int((dur_sec%120)//2):02d}" if dur_sec > 60 else "1:00"
             movements = [
-                {"name": "Seated Flat", "time": half_time},
+                {"name": "Seated Flat", "time": "0:00"},
                 {"name": "Running with Resistance", "time": half_time},
                 None, None, None, None
             ]
