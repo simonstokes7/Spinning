@@ -2,7 +2,7 @@
 
 A mobile single-screen cockpit designed for indoor cycling bikes and bike handlebars.
 
-![Handlebar Display](https://raw.githubusercontent.com/simon/Spinning/main/Spinning%20Symbols.jpg)
+![Spinning Movements](https://raw.githubusercontent.com/simonstokes7/Spinning/main/Spinning%20Symbols.jpg)
 
 ---
 
@@ -16,20 +16,16 @@ A mobile single-screen cockpit designed for indoor cycling bikes and bike handle
 
 ---
 
-## 🚀 Live Demo on GitHub Pages
+## 🚀 How to Run on Your Phone:
 
-Open this link on your phone mounted on your bike handlebars:
-`https://<your-username>.github.io/<your-repo-name>/`
+### Method 1: Open Directly on Phone (Offline via USB)
+1. Download **`index.html`** or **`Latest_Spin_Class_Workout.html`** from this repository.
+2. Copy it via USB cable to your phone.
+3. Tap to open in Safari (iOS) or Chrome (Android)—no internet needed!
 
----
-
-## 🛠️ How to Host on Your GitHub in 3 Steps:
-
-1. **Create Repository:** Create a new repository on [GitHub](https://github.com/new).
-2. **Upload `index.html`:** Upload the `index.html` mobile workout file to your repository.
-3. **Enable GitHub Pages:** Go to **Settings** &rarr; **Pages** &rarr; select branch `main` &rarr; click **Save**.
-
-Your handlebar workout will be live instantly!
+### Method 2: Live Web Cockpit (GitHub Pages)
+If GitHub Pages is enabled on this repository:
+👉 **[https://simonstokes7.github.io/Spinning/](https://simonstokes7.github.io/Spinning/)**
 
 ---
 
