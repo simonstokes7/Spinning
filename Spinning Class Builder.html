@@ -1080,7 +1080,7 @@
       instructor: "Simon",
       energyZone: "Strength",
       targetDuration: "45",
-      tracks: [
+            tracks: [
         {
           id: "t1",
           name: "The Answer",
@@ -1094,9 +1094,9 @@
             { name: "Standing Climb", time: "2:00" },
             { name: "Seated Climb", time: "2:00" },
             { name: "Standing Climb", time: "2:55" },
-            null
+            null, null
           ],
-          cues: "118 BPM > 110 -> Half-time cadence 59 RPM. Progressive climb building warm-up resistance."
+          cues: "Warm up at 60. introduce the class. The approach. The music. Work at your own level .... but the music is ther to get you thru if oyu want a challenge. I wil always cue you in. HP3 for the stand ups."
         },
         {
           id: "t2",
@@ -1111,9 +1111,9 @@
             { name: "Running with Resistance", time: "2:00" },
             { name: "Seated Flat", time: "1:00" },
             { name: "Running with Resistance", time: "1:02" },
-            null
+            null, null
           ],
-          cues: "162 BPM > 110 -> Half-time cadence 81 RPM. Strong rhythmic Seated Flat with moderate resistance."
+          cues: "Big strong beat. about 81. 2 chances to work harder, standing up and gqing faster. HP2 all the way."
         },
         {
           id: "t3",
@@ -1128,9 +1128,9 @@
             { name: "Standing Climb", time: "1:30" },
             { name: "Running with Resistance", time: "1:00" },
             { name: "Standing Climb", time: "1:26" },
-            null
+            null, null
           ],
-          cues: "138 BPM > 110 -> Half-time cadence 69 RPM. Heavy steady hill climb in and out of the saddle."
+          cues: "Heavy steady hill climb in and out of the saddle. When we're out we're challenged."
         },
         {
           id: "t4",
@@ -1145,9 +1145,9 @@
             { name: "Jumps on a Hill", time: "1:30" },
             { name: "Standing Climb", time: "1:30" },
             { name: "Jumps on a Hill", time: "1:24" },
-            null
+            null, null
           ],
-          cues: "129 BPM > 110 -> Half-time cadence 65 RPM. 8-count jumps on a hill with high resistance."
+          cues: "From pos 2 to 3 for the choruses when  stnd up. Up for 8 and then down again. I will cue you ..."
         },
         {
           id: "t5",
@@ -1162,9 +1162,9 @@
             { name: "Running with Resistance", time: "2:00" },
             { name: "Seated Flat", time: "1:30" },
             { name: "Running with Resistance", time: "1:41" },
-            null
+            null, null
           ],
-          cues: "103 BPM <= 110 -> Direct cadence 103 RPM. High tempo fast flat & running with resistance."
+          cues: "Power, anger and agression in this one. The beat is around 100 .. its a good place to be. Then just if you're up for it, feel the vibe I'll offer you more ... until the hairy bloke screams !"
         },
         {
           id: "t6",
@@ -1179,23 +1179,24 @@
             { name: "Standing Climb", time: "1:30" },
             { name: "Sprints on a Hill", time: "30s x 2" },
             { name: "Standing Climb", time: "1:00" },
-            { name: "Sprints on a Hill", time: "30s x 2" }
+            { name: "Sprints on a Hill", time: "30s x 2" },
+            null
           ],
-          cues: "136 BPM > 110 -> Half-time cadence 68 RPM. Heavy climb with 30-second all-out sprint surges."
+          cues: "From seated to standing when you Find yourself, Alone to sit. I'll show you."
         },
         {
           id: "t7",
-          name: "Nebula - one workout",
-          artist: "Cool-down",
+          name: "Nebula",
+          artist: "Down-tempo Cool-down",
           bpm: "92",
           duration: "04:46",
-          cadence: "92 RPM (Seated Flat)",
+          cadence: "Easy Spin & Stretch",
           zone: "Recovery",
           movements: [
             { name: "Seated Flat", time: "4:46" },
-            null, null, null, null
+            null, null, null, null, null
           ],
-          cues: "92 BPM <= 110 -> Direct cadence 92 RPM. Easy spin flat road, lower heart rate to resting."
+          cues: "Time to finish on a high. Completely new track for me to use. Repeating melody, get into and let it move the peadals for you. Big finish ... feel it build be ready to add more resistence and cadence, then take it home ... ENJOY"
         }
       ]
     };
@@ -1280,12 +1281,16 @@
         const zoneColor = isLastTrack ? '#00e5ff' : (ZONE_COLORS[track.zone] || '#00e676');
 
         let movBadges = '';
-        (track.movements || []).forEach(m => {
-          if (m && m.name && SYMBOL_ICONS[m.name]) {
-            movBadges += '<span class="summary-mov-badge"><img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><span>' + m.name + (m.time ? ' (' + m.time + ')' : '') + '</span></span>';
-          }
-        });
-        if (!movBadges) movBadges = '<span style="color:var(--text-dim);">No movements</span>';
+        if (isLastTrack) {
+          movBadges = '<span style="color:var(--accent-cyan); font-weight:700;">🧘 Down-tempo Stretch</span>';
+        } else {
+          (track.movements || []).forEach(m => {
+            if (m && m.name && SYMBOL_ICONS[m.name]) {
+              movBadges += '<span class="summary-mov-badge"><img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><span>' + m.name + (m.time ? ' (' + m.time + ')' : '') + '</span></span>';
+            }
+          });
+          if (!movBadges) movBadges = '<span style="color:var(--text-dim);">No movements</span>';
+        }
 
         const zoneLabel = isLastTrack ? '🧘 Cool-Down & Stretch' : (track.zone || 'Endurance');
 
@@ -1391,13 +1396,19 @@
               '<button class="icon-btn delete-btn" onclick="deleteTrack(' + tIdx + ')" title="Delete Track">🗑️</button>' +
             '</div>' +
           '</div>' +
-          '<div class="movements-section">' +
-            '<div class="movements-label">' +
-              '<span>Spinning® Movements & Transitions (Up to 6)</span>' +
-              '<span>Select symbol below</span>' +
-            '</div>' +
-            '<div class="slots-grid">' + slotsHtml + '</div>' +
-          '</div>' +
+          (isLastTrack ? 
+            '<div class="movements-section" style="background: rgba(0, 229, 255, 0.06); border: 1px dashed rgba(0, 229, 255, 0.3); text-align: center; padding: 12px 14px;">' +
+              '<div style="font-size: 0.88rem; font-weight: 700; color: var(--accent-cyan);">🧘 Down-tempo Cool-down & Full Body Stretch</div>' +
+              '<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Relaxing down-tempo track to lower heart rate and stretch out to — no workout movements required.</div>' +
+            '</div>' :
+            '<div class="movements-section">' +
+              '<div class="movements-label">' +
+                '<span>Spinning® Movements & Transitions (Up to 6)</span>' +
+                '<span>Select symbol below</span>' +
+              '</div>' +
+              '<div class="slots-grid">' + slotsHtml + '</div>' +
+            '</div>'
+          ) +
           '<textarea class="cues-input" placeholder="Instructor coaching cues, cadence guidance, and music notes..." oninput="updateTrackProp(' + tIdx + ', \'cues\', this.value)">' + (track.cues || '') + '</textarea>';
 
         container.appendChild(card);

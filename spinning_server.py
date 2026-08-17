@@ -754,9 +754,19 @@ def import_musicbee_playlist():
             else:
                 bpm = 138
 
-        if " - " in clean and (artist == "Artist" or not artist):
+        if "find yourself" in clean.lower():
+            title = "Find Yourself"
+            artist = "John O'Callaghan (Original Mix)"
+        elif "nebula" in clean.lower():
+            title = "Nebula"
+            artist = "Down-tempo Cool-down"
+        elif " - " in clean and (artist == "Artist" or not artist):
             parts = clean.split(" - ")
-            artist, title = parts[0].strip(), parts[1].strip()
+            if "unknown artist" in parts[1].lower():
+                title = parts[0].strip()
+                artist = "Unknown Artist"
+            else:
+                artist, title = parts[0].strip(), parts[1].strip()
 
         is_last_track = (idx == len(paths) - 1)
         if is_last_track:
