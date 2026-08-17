@@ -2,7 +2,7 @@
 
 A mobile single-screen cockpit designed for indoor cycling bikes and bike handlebars.
 
-![Spinning Movements](https://raw.githubusercontent.com/simonstokes7/Spinning/main/Spinning%20Symbols.jpg)
+![Spinning Movements](Spinning%20Symbols.jpg)
 
 ---
 
