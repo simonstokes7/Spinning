@@ -834,6 +834,38 @@
       .summary-card { box-shadow: none !important; border: 1px solid #ccc !important; }
       .summary-table { color: #000 !important; }
     }
+  
+    .audio-pill {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 700;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .audio-pill.attached {
+      background: rgba(0, 230, 118, 0.15);
+      border: 1px solid #00e676;
+      color: #00e676;
+    }
+    .audio-pill.attached:hover {
+      background: rgba(255, 23, 68, 0.2);
+      border-color: #ff1744;
+      color: #ff1744;
+    }
+    .audio-pill.missing {
+      background: rgba(255, 145, 0, 0.12);
+      border: 1px dashed #ff9100;
+      color: #ff9100;
+    }
+    .audio-pill.missing:hover {
+      background: rgba(0, 229, 255, 0.2);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
   </style>
 </head>
 <body>
@@ -879,6 +911,9 @@
         <button class="btn btn-save" onclick="saveClassData()" title="Save your edits in this browser">
           💾 Save Class
         </button>
+        <button class="btn btn-outline" onclick="triggerBatchAudioUpload()" title="Attach local MP3 music files to your workout tracks" style="border-color:var(--accent-cyan); color:var(--accent-cyan);">
+          🎵 Attach Audio Files
+        </button>
         <button class="btn btn-export" onclick="exportStandaloneWorkout()" title="Export single-screen workout with music for your phone">
           📲 Export for Phone
         </button>
@@ -892,6 +927,10 @@
 
   <!-- Save Notification Toast -->
   <div id="saveToast">✓ Class Saved Successfully!</div>
+
+    <!-- Hidden file inputs for audio attachment -->
+  <input type="file" id="batchAudioInput" multiple accept="audio/*,.mp3,.m4a,.wav" style="display:none;" onchange="handleBatchAudioSelect(event)" />
+  <input type="file" id="singleAudioInput" accept="audio/*,.mp3,.m4a,.wav" style="display:none;" onchange="handleSingleAudioSelect(event)" />
 
   <main>
     <!-- View: Track Builder -->
@@ -1666,6 +1705,92 @@
       if (!quiet) {
         showToast('✓ Saved "' + key + '" to My Classes!');
       }
+    }
+
+    
+    let singleAudioTargetIdx = null;
+
+    function triggerBatchAudioUpload() {
+      document.getElementById('batchAudioInput').click();
+    }
+
+    function triggerSingleAudioUpload(tIdx) {
+      if (classData.tracks[tIdx] && (classData.tracks[tIdx].audioBase64 || classData.tracks[tIdx].filePath)) {
+        if (confirm('Remove or replace audio for "' + (classData.tracks[tIdx].name || 'Track') + '"?')) {
+          classData.tracks[tIdx].audioBase64 = null;
+          classData.tracks[tIdx].audioFileName = null;
+          classData.tracks[tIdx].filePath = null;
+          renderTracks();
+          autoSave();
+          return;
+        }
+      }
+      singleAudioTargetIdx = tIdx;
+      document.getElementById('singleAudioInput').click();
+    }
+
+    function handleSingleAudioSelect(e) {
+      const file = e.target.files[0];
+      if (!file || singleAudioTargetIdx === null) return;
+      
+      const tIdx = singleAudioTargetIdx;
+      showToast('⏳ Reading audio for Track ' + (tIdx + 1) + '...');
+      
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        if (classData.tracks[tIdx]) {
+          classData.tracks[tIdx].audioBase64 = evt.target.result;
+          classData.tracks[tIdx].audioFileName = file.name;
+          renderTracks();
+          autoSave();
+          showToast('✓ Attached ' + file.name + ' to Track ' + (tIdx + 1) + '!');
+        }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    function handleBatchAudioSelect(e) {
+      const files = Array.from(e.target.files);
+      if (!files || files.length === 0) return;
+
+      showToast('⏳ Attaching ' + files.length + ' audio files...');
+      let attachedCount = 0;
+
+      // Smart match: first try by name similarity, then by track index
+      files.forEach((file, fIdx) => {
+        const cleanFileName = file.name.toLowerCase().replace(/\.[^/.]+$/, "").replace(/^[0-9\-_ ]+-\s*/, "");
+        let targetIdx = -1;
+
+        // Try exact/partial title match
+        classData.tracks.forEach((t, tIdx) => {
+          const tName = (t.name || '').toLowerCase();
+          if (tName && (cleanFileName.includes(tName) || tName.includes(cleanFileName))) {
+            targetIdx = tIdx;
+          }
+        });
+
+        // Fallback: match by sequence
+        if (targetIdx === -1 && fIdx < classData.tracks.length) {
+          targetIdx = fIdx;
+        }
+
+        if (targetIdx !== -1) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            classData.tracks[targetIdx].audioBase64 = evt.target.result;
+            classData.tracks[targetIdx].audioFileName = file.name;
+            attachedCount++;
+            if (attachedCount === files.length) {
+              renderTracks();
+              autoSave();
+              showToast('✓ Successfully attached ' + attachedCount + ' audio files to your tracks!');
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      e.target.value = '';
     }
 
     function showToast(msg) {
