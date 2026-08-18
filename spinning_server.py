@@ -696,20 +696,38 @@ def import_musicbee_playlist():
         m3u_path = request.args.get('path', '')
     
     if not m3u_path and os.path.exists(MUSICBEE_PLAYLIST_DIR):
-        candidate = os.path.join(MUSICBEE_PLAYLIST_DIR, f"{playlist_name}.m3u")
-        if os.path.exists(candidate):
-            m3u_path = candidate
+        for ext in ['', '.m3u', '.m3u8', '.mbp']:
+            cand = os.path.join(MUSICBEE_PLAYLIST_DIR, f"{playlist_name}{ext}")
+            if os.path.exists(cand):
+                m3u_path = cand
+                break
+        if not m3u_path:
+            for f in os.listdir(MUSICBEE_PLAYLIST_DIR):
+                if os.path.splitext(f)[0].lower() == playlist_name.lower():
+                    m3u_path = os.path.join(MUSICBEE_PLAYLIST_DIR, f)
+                    break
 
     if not m3u_path or not os.path.exists(m3u_path):
         return jsonify({'error': f'Playlist not found at {m3u_path}'}), 404
 
     paths = []
-    with open(m3u_path, 'r', encoding='utf-8', errors='ignore') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                if os.path.exists(line):
-                    paths.append(line)
+    if m3u_path.lower().endswith('.mbp'):
+        with open(m3u_path, 'rb') as f:
+            raw_bytes = f.read()
+            # Extract all Windows MP3/audio file paths from binary mbp file
+            raw_text = raw_bytes.decode('utf-8', errors='ignore')
+            found_paths = re.findall(r'[A-Za-z]:\\[^:\*\?"<>\|\r\n\t]+\.(?:mp3|flac|m4a|wav|wma)', raw_text, re.IGNORECASE)
+            for p in found_paths:
+                clean_p = p.strip()
+                if os.path.exists(clean_p) and clean_p not in paths:
+                    paths.append(clean_p)
+    else:
+        with open(m3u_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if os.path.exists(line):
+                        paths.append(line)
 
     tracks = []
     for idx, path in enumerate(paths):
@@ -737,7 +755,9 @@ def import_musicbee_playlist():
             if 'TBPM' in id3:
                 val = str(id3['TBPM']).strip()
                 try:
-                    bpm = round(float(val))
+                    parsed_val = round(float(val))
+                    if 50 <= parsed_val <= 220:
+                        bpm = parsed_val
                 except Exception:
                     pass
             if 'TIT2' in id3 and str(id3['TIT2']).strip():
@@ -748,11 +768,35 @@ def import_musicbee_playlist():
             pass
 
         if not bpm:
-            bpm_match = re.search(r'\((\d{2,3})\s*BPM\)', filename, re.IGNORECASE)
-            if bpm_match:
-                bpm = int(bpm_match.group(1))
-            else:
-                bpm = 138
+            # Check explicit BPM filename patterns
+            patterns = [
+                r'\((\d{2,3})\s*BPM\)',
+                r'(?:slow\s+at|at|@)\s*(\d{2,3})',
+                r'(\d{2,3})\s*bpm',
+                r'\[(\d{2,3})\s*bpm\]'
+            ]
+            for pat in patterns:
+                m = re.search(pat, filename, re.IGNORECASE)
+                if m:
+                    num = int(m.group(1))
+                    if 50 <= num <= 220:
+                        bpm = num
+                        break
+
+        if not bpm:
+            # Use librosa audio analysis if available
+            try:
+                import librosa
+                y, sr = librosa.load(path, sr=22050, duration=100, offset=30)
+                tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+                detected = float(tempo[0]) if hasattr(tempo, '__len__') else float(tempo)
+                if 50 <= detected <= 220:
+                    bpm = round(detected)
+            except Exception:
+                pass
+
+        if not bpm:
+            bpm = 138
 
         if "find yourself" in clean.lower():
             title = "Find Yourself"

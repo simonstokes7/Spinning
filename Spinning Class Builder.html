@@ -1903,9 +1903,13 @@
             let clean = filename.replace(/\.[^/.]+$/, "").replace(/^[0-9\-_ ]+-\s*/, "").trim();
 
             let bpm = 138;
-            const bpmMatch = filename.match(/\((\d{2,3})\s*BPM\)/i);
+            const bpmMatch = filename.match(/\((\d{2,3})\s*BPM\)/i) ||
+                             filename.match(/(?:slow\s+at|at|@)\s*(\d{2,3})/i) ||
+                             filename.match(/(\d{2,3})\s*bpm/i) ||
+                             filename.match(/\[(\d{2,3})\s*bpm\]/i);
             if (bpmMatch) {
-              bpm = parseInt(bpmMatch[1]);
+              const num = parseInt(bpmMatch[1]);
+              if (num >= 50 && num <= 220) bpm = num;
             }
 
             let artist = "Artist";
