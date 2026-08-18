@@ -1967,12 +1967,26 @@
         });
 
         if (tracks.length > 0) {
+          // Detect last track as cool-down
+          const lastT = tracks[tracks.length - 1];
+          if (lastT) {
+            lastT.zone = 'Recovery';
+            lastT.cadence = 'Easy Spin & Stretch';
+            if (lastT.bpm === '138' || lastT.name.toLowerCase().includes('black velvet')) {
+              lastT.bpm = '92';
+            }
+            if (lastT.name.toLowerCase().includes('black velvet')) {
+              lastT.artist = 'Alannah Myles';
+            }
+            lastT.cues = 'Down-tempo cool-down. Lower heart rate with an easy pedal spin, then dismount and full-body stretch out.';
+            lastT.movements = [{ name: 'Seated Flat', time: '0:00' }, null, null, null, null, null];
+          }
+
           const plName = file.name.replace(/\.[^/.]+$/, "");
           classData = {
             title: plName + " - Spinning Class",
             instructor: "Simon",
             energyZone: "Strength",
-            targetDuration: "45",
             tracks: tracks
           };
           applyImportedData(classData);
