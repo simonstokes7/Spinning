@@ -606,26 +606,27 @@ def generate_embedded_html(class_data):
       const t = CLASS_TRACKS[curIdx];
       if (!t || !t.movements) return;
 
-      let accum = 0;
-      let activeIdx = -1;
+      const validMovs = (t.movements || []).filter(m => m && m.name);
+      if (validMovs.length === 0) return;
 
-      for (let i = 0; i < t.movements.length; i++) {{
-        const m = t.movements[i];
-        if (!m || !m.name) continue;
-        let mDur = 60;
-        if (m.time) {{
-          if (m.time.includes(':')) {{
-            const [mins, secs] = m.time.split(':').map(Number);
-            mDur = (mins || 0) * 60 + (secs || 0);
-          }} else if (m.time.toLowerCase().includes('s')) {{
-            mDur = parseInt(m.time) || 30;
-          }}
+      // Parse each movement start timestamp in seconds
+      const timestamps = validMovs.map(m => {{
+        if (!m.time) return 0;
+        if (m.time.includes(':')) {{
+          const [mins, secs] = m.time.split(':').map(Number);
+          return (mins || 0) * 60 + (secs || 0);
         }}
-        if (curSec >= accum && curSec < accum + mDur) {{
+        return parseInt(m.time) || 0;
+      }});
+
+      // Find the active movement whose start timestamp <= curSec
+      let activeIdx = 0;
+      for (let i = 0; i < timestamps.length; i++) {{
+        if (curSec >= timestamps[i]) {{
           activeIdx = i;
+        }} else {{
           break;
         }}
-        accum += mDur;
       }}
 
       const cards = document.querySelectorAll('.mov-card');
