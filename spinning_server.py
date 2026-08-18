@@ -862,10 +862,17 @@ def export_embedded_workout():
     class_data = data.get('classData', {})
     html_content = generate_embedded_html(class_data)
 
-    filename = "Latest_Spin_Class_Workout.html"
-    save_path = os.path.join(PROJECT_DIR, filename)
-    with open(save_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
+    raw_title = class_data.get('title', 'Spinning_Workout')
+    safe_title = re.sub(r'[^a-zA-Z0-9_-]', '_', raw_title)
+    filename = f"{safe_title}_Workout.html"
+
+    # Safely write to disk in binary mode without locking crashes
+    try:
+        save_path = os.path.join(PROJECT_DIR, filename)
+        with open(save_path, 'wb') as f:
+            f.write(html_content.encode('utf-8'))
+    except Exception as e:
+        print("Save warning:", e)
 
     return Response(
         html_content,

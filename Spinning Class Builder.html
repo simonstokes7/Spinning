@@ -856,7 +856,7 @@
 
       <div class="stats-bar">
         <div class="stat-item">
-          <span class="stat-label">Total Time</span>
+          <span class="stat-label">Workout Time</span>
           <span class="stat-value" id="totalTimeDisplay">45:49</span>
         </div>
         <div class="stat-item">
@@ -917,10 +917,7 @@
             <option value="Race Day">Race Day Zone (80-92%)</option>
           </select>
         </div>
-        <div class="meta-card">
-          <div class="meta-label">Target (Min)</div>
-          <input type="number" class="meta-input" id="targetDuration" value="45" oninput="autoSave()" />
-        </div>
+
         
         <!-- Compact Ride Profile Journey on Top Line -->
         <div class="top-profile-card">
@@ -943,7 +940,7 @@
       <!-- Track-By-Track Builder Section Header -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div style="font-family:'Outfit',sans-serif; font-size:1.15rem; font-weight:800; color:#fff;">
-          🛠️ Track Builder & Movement Transitions (Up to 5 per Track)
+          🛠️ Track Builder & Movement Transitions (Up to 6 per Track)
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-outline btn-sm" onclick="resetToSample()">🔄 Reset to Spin001 Sample</button>
@@ -1513,19 +1510,24 @@
     }
 
     function updateStats() {
-      let totalSec = 0;
-      if (classData && classData.tracks) {
-        classData.tracks.forEach(t => {
-          totalSec += parseDurationToSec(t.duration);
+      let workoutSec = 0;
+      let workoutTrackCount = 0;
+
+      if (classData && classData.tracks && classData.tracks.length > 0) {
+        // Exclude the last track (the cool-down track) from workout duration and count
+        const workoutTracks = classData.tracks.length > 1 ? classData.tracks.slice(0, -1) : classData.tracks;
+        workoutTracks.forEach(t => {
+          workoutSec += parseDurationToSec(t.duration);
         });
+        workoutTrackCount = workoutTracks.length;
       }
 
-      const mins = Math.floor(totalSec / 60);
-      const secs = totalSec % 60;
+      const mins = Math.floor(workoutSec / 60);
+      const secs = workoutSec % 60;
       const durStr = mins + ':' + (secs < 10 ? '0' : '') + secs;
 
       if (document.getElementById('totalTimeDisplay')) document.getElementById('totalTimeDisplay').textContent = durStr;
-      if (document.getElementById('totalTracksDisplay')) document.getElementById('totalTracksDisplay').textContent = classData.tracks ? classData.tracks.length : 0;
+      if (document.getElementById('totalTracksDisplay')) document.getElementById('totalTracksDisplay').textContent = workoutTrackCount;
       if (document.getElementById('primaryFocusDisplay')) {
         document.getElementById('primaryFocusDisplay').textContent = classData.energyZone || 'Strength';
         document.getElementById('primaryFocusDisplay').style.color = ZONE_COLORS[classData.energyZone] || '#ff9100';
