@@ -7,7 +7,14 @@ from flask import Flask, send_from_directory, jsonify, request, Response
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
 
+import werkzeug.formparser
+werkzeug.formparser.default_max_form_memory_size = 500 * 1024 * 1024
+werkzeug.formparser.default_max_form_parts = 5000
+
 app = Flask(__name__, static_folder='.', static_url_path='')
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
+app.config['MAX_FORM_MEMORY_SIZE'] = 500 * 1024 * 1024
+app.config['MAX_FORM_PARTS'] = 5000
 
 MUSICBEE_PLAYLIST_DIR = r"C:\Users\simon\Music\MusicBee\Playlists"
 PROJECT_DIR = r"C:\Data_Projects\Spinning"
@@ -73,8 +80,8 @@ def generate_embedded_html(class_data):
                         audio_path = mp
                         break
 
-        b64_audio = ""
-        if audio_path and os.path.exists(audio_path):
+        b64_audio = t.get('audioBase64') or ""
+        if not b64_audio and audio_path and os.path.exists(audio_path):
             try:
                 with open(audio_path, 'rb') as af:
                     b64_str = base64.b64encode(af.read()).decode('utf-8')
