@@ -932,6 +932,8 @@
   <input type="file" id="batchAudioInput" multiple accept="audio/*,.mp3,.m4a,.wav" style="display:none;" onchange="handleBatchAudioSelect(event)" />
   <input type="file" id="singleAudioInput" accept="audio/*,.mp3,.m4a,.wav" style="display:none;" onchange="handleSingleAudioSelect(event)" />
 
+    <!-- Hidden file input for single track replacement -->
+  <input type="file" id="replaceTrackInput" accept="audio/*,.mp3,.m4a,.wav,.flac" style="display:none;" onchange="handleReplaceTrackSelect(event)" />
   <main>
     <!-- View: Track Builder -->
     <div id="viewBuilder" class="view-section active">
@@ -1442,6 +1444,7 @@
               '</select>' +
             '</div>' +
             '<div class="track-actions">' +
+              '<button class="icon-btn" onclick="triggerReplaceTrackFile(' + tIdx + ')" title="🔄 Replace Track Song & Audio" style="color:var(--accent-cyan); font-weight:800; font-size:1.05rem;">🔄</button>' +
               '<button class="icon-btn" onclick="moveTrack(' + tIdx + ', -1)" title="Move Up">▲</button>' +
               '<button class="icon-btn" onclick="moveTrack(' + tIdx + ', 1)" title="Move Down">▼</button>' +
               '<button class="icon-btn delete-btn" onclick="deleteTrack(' + tIdx + ')" title="Delete Track">🗑️</button>' +
@@ -1791,6 +1794,83 @@
         }
       });
       e.target.value = '';
+    }
+
+    
+    let replaceTargetIdx = null;
+
+    function triggerReplaceTrackFile(tIdx) {
+      replaceTargetIdx = tIdx;
+      const input = document.getElementById('replaceTrackInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleReplaceTrackSelect(e) {
+      const file = e.target.files[0];
+      if (!file || replaceTargetIdx === null) return;
+      
+      const tIdx = replaceTargetIdx;
+      showToast('⏳ Reading new audio for Track ' + (tIdx + 1) + '...');
+
+      // Clean song name from filename
+      let filename = file.name.replace(/\.[^/.]+$/, "");
+      let cleanName = filename.replace(/^[0-9\-_ ]+-\s*/, "").replace(/\s*\([0-9]+\s*BPM.*\)/i, "").trim();
+
+      // Extract BPM if present in filename
+      let bpm = 120;
+      const bpmMatch = file.name.match(/\((\d{2,3})\s*BPM/i) || 
+                       file.name.match(/(?:slow\s+at|at|@)\s*(\d{2,3})/i) ||
+                       file.name.match(/ (\d{2,3})\s*bpm/i) ||
+                       file.name.match(/\[(\d{2,3})\s*bpm\]/i);
+      if (bpmMatch) {
+        const num = parseInt(bpmMatch[1]);
+        if (num >= 50 && num <= 220) bpm = num;
+      }
+
+      // Read audio data and measure duration
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const base64Data = evt.target.result;
+        
+        // Measure audio duration via Audio object
+        const tempAudio = new Audio();
+        tempAudio.src = base64Data;
+        tempAudio.onloadedmetadata = function() {
+          const totalSecs = Math.round(tempAudio.duration || 300);
+          const mins = Math.floor(totalSecs / 60);
+          const secs = totalSecs % 60;
+          const durStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+          if (classData.tracks[tIdx]) {
+            classData.tracks[tIdx].name = cleanName || classData.tracks[tIdx].name;
+            classData.tracks[tIdx].bpm = String(bpm);
+            classData.tracks[tIdx].duration = durStr;
+            classData.tracks[tIdx].audioBase64 = base64Data;
+            classData.tracks[tIdx].audioFileName = file.name;
+
+            // Recalculate cadence
+            if (bpm > 110) {
+              const rpm = Math.round(bpm / 2);
+              const terrain = (rpm >= 60 && rpm <= 80) ? "Climb" : (rpm > 80 ? "Seated Flat" : "Heavy Climb");
+              classData.tracks[tIdx].cadence = rpm + ' RPM (' + terrain + ')';
+            } else {
+              const rpm = Math.round(bpm);
+              const terrain = (rpm >= 80 && rpm <= 110) ? "Seated Flat" : (rpm >= 60 ? "Climb" : "Cadence");
+              classData.tracks[tIdx].cadence = rpm + ' RPM (' + terrain + ')';
+            }
+
+            renderTracks();
+            updateStats();
+            updateProfileCurve();
+            autoSave();
+            showToast('✓ Replaced Track ' + (tIdx + 1) + ' with ' + file.name + ' (' + durStr + ', ' + bpm + ' BPM)!');
+          }
+        };
+      };
+      reader.readAsDataURL(file);
     }
 
     function showToast(msg) {
