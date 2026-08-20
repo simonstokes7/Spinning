@@ -375,7 +375,14 @@ def generate_embedded_html(class_data):
       <div class="title-group">
         <h1>🚴 Latest Spin Class</h1>
       </div>
-      <div class="clock-pill" id="liveClock">00:00</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
+          ⏱️ 00:00 / 00:00
+        </div>
+        <div class="clock-pill" id="liveClock" style="font-size:0.85rem; color:var(--text-muted); padding:6px 12px; font-weight:600;" title="Local Time of Day">
+          🕒 00:00
+        </div>
+      </div>
     </header>
 
     <div class="cockpit">
@@ -461,6 +468,41 @@ def generate_embedded_html(class_data):
       }}
     }}
 
+    function parseDurationSecs(durStr) {{
+      if (!durStr) return 300;
+      if (durStr.includes(':')) {{
+        const [m, s] = durStr.split(':').map(Number);
+        return (m || 0) * 60 + (s || 0);
+      }}
+      return parseInt(durStr) || 300;
+    }}
+
+    let totalWorkoutSecs = 0;
+    CLASS_TRACKS.forEach(t => {{
+      totalWorkoutSecs += parseDurationSecs(t.duration);
+    }});
+
+    function updateTotalClassTimer(currentTrackSecs = 0) {{
+      let elapsedPrior = 0;
+      for (let i = 0; i < curIdx; i++) {{
+        elapsedPrior += parseDurationSecs(CLASS_TRACKS[i].duration);
+      }}
+      const totalElapsed = elapsedPrior + Math.round(currentTrackSecs);
+      
+      const elM = Math.floor(totalElapsed / 60);
+      const elS = totalElapsed % 60;
+      const elStr = String(elM).padStart(2, '0') + ':' + String(elS).padStart(2, '0');
+
+      const totM = Math.floor(totalWorkoutSecs / 60);
+      const totS = totalWorkoutSecs % 60;
+      const totStr = String(totM).padStart(2, '0') + ':' + String(totS).padStart(2, '0');
+
+      const pill = document.getElementById('totalClassTimer');
+      if (pill) {{
+        pill.textContent = '⏱️ ' + elStr + ' / ' + totStr;
+      }}
+    }}
+
     function init() {{
       audio = document.getElementById('audioEngine');
       audio.addEventListener('timeupdate', onTimeUpdate);
@@ -484,10 +526,16 @@ def generate_embedded_html(class_data):
 
       setInterval(() => {{
         const now = new Date();
-        document.getElementById('liveClock').textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        let h = now.getHours();
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        h = h ? h : 12;
+        document.getElementById('liveClock').textContent = '🕒 ' + h + ':' + m + ' ' + ampm;
       }}, 1000);
 
       loadTrack(0, false);
+      updateTotalClassTimer(0);
     }}
 
     function loadTrack(idx, autoPlay = true) {{
@@ -599,6 +647,7 @@ def generate_embedded_html(class_data):
       document.getElementById('curTimeDisplay').textContent = curM + ':' + (curS < 10 ? '0' : '') + curS;
       document.getElementById('remTimeDisplay').textContent = '-' + remM + ':' + (remS < 10 ? '0' : '') + remS;
       highlightMovement(cur);
+      updateTotalClassTimer(cur);
     }}
 
     function seekAudio(e) {{
