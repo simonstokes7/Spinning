@@ -902,8 +902,8 @@
       </div>
 
       <div class="actions-group">
-        <button class="btn btn-import-mb" onclick="openMusicBeeModal()" title="Import a new class playlist from MusicBee">
-          🎵 Import MusicBee Playlist
+        <button class="btn btn-import-mb" onclick="openMusicBeeModal()" title="Import a class playlist (.m3u, .mbp, etc.)">
+          🎵 Import Playlist
         </button>
         <button class="btn btn-saved-library" onclick="openSavedClassesModal()" title="View and open your saved classes library">
           📂 My Classes
@@ -1050,7 +1050,7 @@
     <div class="modal-card" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
         <div>
-          <div style="font-family:'Outfit',sans-serif; font-size:1.3rem; font-weight:800; color:#fff;">🎵 Import MusicBee Playlist</div>
+          <div style="font-family:'Outfit',sans-serif; font-size:1.3rem; font-weight:800; color:#fff;">🎵 Import Playlist</div>
           <div style="font-size:0.8rem; color:var(--text-muted);">Select a playlist from MusicBee with true BPM & duration analysis</div>
         </div>
         <button class="btn btn-outline btn-sm" onclick="closeMusicBeeModal()">✕</button>
@@ -2057,7 +2057,7 @@
 
     async function fetchMusicBeePlaylists() {
       const listEl = document.getElementById('playlistsList');
-      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; padding:12px; text-align:center;">Scanning for MusicBee playlists...</div>';
+      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; padding:12px; text-align:center;">Scanning for playlists...</div>';
       
       try {
         const resp = await fetch(API_BASE + '/api/musicbee/playlists');
@@ -2076,7 +2076,7 @@
             listEl.appendChild(row);
           });
         } else {
-          listEl.innerHTML = '<div style="color:var(--text-dim); font-size:0.85rem; padding:12px; text-align:center;">No .m3u playlists found in MusicBee folder. Use browse button below.</div>';
+          listEl.innerHTML = '<div style="color:var(--text-dim); font-size:0.85rem; padding:12px; text-align:center;">No playlists found in default folder. Use browse button below.</div>';
         }
       } catch (err) {
         listEl.innerHTML = '<div class="saved-class-card">' +
