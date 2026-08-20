@@ -564,7 +564,7 @@ def generate_embedded_html(class_data):
       const isLast = (curIdx === CLASS_TRACKS.length - 1);
       const zColor = isLast ? '#00e5ff' : (ZONE_COLORS[t.zone] || '#00e676');
       const badge = document.getElementById('zoneBadge');
-      badge.textContent = isLast ? '🧘 COOL-DOWN & STRETCH' : ((t.zone || 'Endurance').toUpperCase() + ' ZONE');
+      const rpeTag = t.rpe ? (' • ' + t.rpe) : ''; badge.textContent = isLast ? '🧘 COOL-DOWN & STRETCH' : ((t.zone || 'Endurance').toUpperCase() + ' ZONE' + rpeTag);
       badge.style.background = zColor + '33';
       badge.style.color = zColor;
       badge.style.border = '1px solid ' + zColor;
