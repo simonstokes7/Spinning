@@ -477,17 +477,27 @@ def generate_embedded_html(class_data):
       return parseInt(durStr) || 300;
     }}
 
+    // Calculate total workout time excluding the final cool-down track
+    const workoutTracks = CLASS_TRACKS.slice(0, Math.max(1, CLASS_TRACKS.length - 1));
     let totalWorkoutSecs = 0;
-    CLASS_TRACKS.forEach(t => {{
+    workoutTracks.forEach(t => {{
       totalWorkoutSecs += parseDurationSecs(t.duration);
     }});
 
     function updateTotalClassTimer(currentTrackSecs = 0) {{
-      let elapsedPrior = 0;
-      for (let i = 0; i < curIdx; i++) {{
-        elapsedPrior += parseDurationSecs(CLASS_TRACKS[i].duration);
+      const isLast = (curIdx === CLASS_TRACKS.length - 1);
+      let totalElapsed = 0;
+
+      if (isLast) {{
+        // On cool-down track, workout is finished (cap at total active workout time)
+        totalElapsed = totalWorkoutSecs;
+      }} else {{
+        let elapsedPrior = 0;
+        for (let i = 0; i < curIdx; i++) {{
+          elapsedPrior += parseDurationSecs(CLASS_TRACKS[i].duration);
+        }}
+        totalElapsed = Math.min(totalWorkoutSecs, elapsedPrior + Math.round(currentTrackSecs));
       }}
-      const totalElapsed = elapsedPrior + Math.round(currentTrackSecs);
       
       const elM = Math.floor(totalElapsed / 60);
       const elS = totalElapsed % 60;
@@ -499,7 +509,7 @@ def generate_embedded_html(class_data):
 
       const pill = document.getElementById('totalClassTimer');
       if (pill) {{
-        pill.textContent = '⏱️ ' + elStr + ' / ' + totStr;
+        pill.textContent = isLast ? ('⏱️ WORKOUT: ' + totStr + ' (Done)') : ('⏱️ ' + elStr + ' / ' + totStr);
       }}
     }}
 
