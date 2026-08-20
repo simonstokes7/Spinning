@@ -393,6 +393,7 @@ def generate_embedded_html(class_data):
       <div>
         <div class="song-title" id="songTitle"></div>
         <div class="song-artist" id="songArtist"></div>
+        <div style="font-size:0.95rem; font-weight:700; color:var(--accent-cyan); margin-top:4px;" id="songDurationPill">⏱️ 00:00</div>
       </div>
 
       <div class="metrics-row">
@@ -411,10 +412,6 @@ def generate_embedded_html(class_data):
         <div class="metric-box">
           <div class="metric-lbl">Cadence</div>
           <div class="metric-val" id="cadenceVal" style="font-size:1.35rem; color:#fff;"></div>
-        </div>
-        <div class="metric-box">
-          <div class="metric-lbl">Duration</div>
-          <div class="metric-val" id="durationVal"></div>
         </div>
       </div>
 
