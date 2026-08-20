@@ -390,10 +390,10 @@ def generate_embedded_html(class_data):
 
     <div class="cockpit">
       <div class="zone-badge" id="zoneBadge">STRENGTH ZONE</div>
-      <div>
+      <div style="display:flex; flex-direction:column; align-items:center;">
         <div class="song-title" id="songTitle"></div>
         <div class="song-artist" id="songArtist"></div>
-        <div style="font-size:0.95rem; font-weight:700; color:var(--accent-cyan); margin-top:4px;" id="songDurationPill">⏱️ 00:00</div>
+        <div class="song-duration-badge" id="songDurationPill">00:00</div>
       </div>
 
       <div class="metrics-row">
