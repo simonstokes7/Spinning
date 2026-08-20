@@ -89,10 +89,7 @@ def generate_embedded_html(class_data):
             except Exception as e:
                 print(f"Error encoding {audio_path}: {e}")
 
-        rpe_defaults = {'Recovery': 'RPE 1-3 (Easy)', 'Endurance': 'RPE 4-5 (Moderate)', 'Strength': 'RPE 6-7 (Hard)', 'Interval': 'RPE 8-9 (Very Hard)', 'Race Day': 'RPE 10 (Maximal)'}
         track_copy = dict(t)
-        if not track_copy.get('rpe'):
-            track_copy['rpe'] = rpe_defaults.get(t.get('zone', 'Endurance'), 'RPE 6-7 (Hard)')
         if b64_audio:
             track_copy['audioBase64'] = b64_audio
         tracks_data_with_audio.append(track_copy)
@@ -390,10 +387,10 @@ def generate_embedded_html(class_data):
 
     <div class="cockpit">
       <div class="zone-badge" id="zoneBadge">STRENGTH ZONE</div>
-      <div style="display:flex; flex-direction:column; align-items:center;">
+      <div style="text-align:center;">
         <div class="song-title" id="songTitle"></div>
         <div class="song-artist" id="songArtist"></div>
-        <div class="song-duration-badge" id="songDurationPill">00:00</div>
+        <div id="songDurationPill" style="font-size:1.3rem; font-weight:800; color:var(--accent-cyan); margin: 12px 0 16px 0; text-align:center; letter-spacing:0.5px;"></div>
       </div>
 
       <div class="metrics-row">
@@ -403,11 +400,11 @@ def generate_embedded_html(class_data):
         </div>
         <div class="metric-box">
           <div class="metric-lbl">Target RPE</div>
-          <div class="metric-val" id="rpeVal" style="color:var(--accent-cyan); font-size:1.05rem; font-weight:800;"></div>
+          <div class="metric-val" id="targetRpeVal" style="font-size:1.25rem; font-weight:800; color:#ff9100;">RPE 6</div>
         </div>
         <div class="metric-box">
           <div class="metric-lbl">Song BPM</div>
-          <div class="metric-val" id="bpmVal" style="color:#fff;"></div>
+          <div class="metric-val" id="bpmVal" style="color:var(--accent-cyan)"></div>
         </div>
         <div class="metric-box">
           <div class="metric-lbl">Cadence</div>
@@ -560,16 +557,17 @@ def generate_embedded_html(class_data):
       document.getElementById('trackNumVal').textContent = (curIdx + 1) + ' / ' + CLASS_TRACKS.length;
       document.getElementById('songTitle').textContent = t.name;
       document.getElementById('songArtist').textContent = t.artist || '';
+      document.getElementById('songDurationPill').textContent = t.duration || '05:00';
+      const rpeNum = t.target_rpe || t.rpe || '5';
+      document.getElementById('targetRpeVal').textContent = 'RPE ' + rpeNum;
       document.getElementById('bpmVal').textContent = t.bpm || '--';
       document.getElementById('cadenceVal').textContent = t.cadence || '--';
-      document.getElementById('durationVal').textContent = t.duration || '05:00';
-      if (document.getElementById('rpeVal')) document.getElementById('rpeVal').textContent = isLast ? 'RPE 1-3' : (t.rpe || 'RPE 6-7');
       document.getElementById('cuesBox').textContent = t.cues ? '"' + t.cues + '"' : '"Focus on smooth pedal cadence."';
 
       const isLast = (curIdx === CLASS_TRACKS.length - 1);
       const zColor = isLast ? '#00e5ff' : (ZONE_COLORS[t.zone] || '#00e676');
       const badge = document.getElementById('zoneBadge');
-      const rpeTag = t.rpe ? (' • ' + t.rpe) : ''; badge.textContent = isLast ? '🧘 COOL-DOWN & STRETCH' : ((t.zone || 'Endurance').toUpperCase() + ' ZONE' + rpeTag);
+      badge.textContent = isLast ? '🧘 COOL-DOWN & STRETCH' : ((t.zone || 'Endurance').toUpperCase() + ' ZONE');
       badge.style.background = zColor + '33';
       badge.style.color = zColor;
       badge.style.border = '1px solid ' + zColor;
