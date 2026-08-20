@@ -89,7 +89,10 @@ def generate_embedded_html(class_data):
             except Exception as e:
                 print(f"Error encoding {audio_path}: {e}")
 
+        rpe_defaults = {'Recovery': 'RPE 1-3 (Easy)', 'Endurance': 'RPE 4-5 (Moderate)', 'Strength': 'RPE 6-7 (Hard)', 'Interval': 'RPE 8-9 (Very Hard)', 'Race Day': 'RPE 10 (Maximal)'}
         track_copy = dict(t)
+        if not track_copy.get('rpe'):
+            track_copy['rpe'] = rpe_defaults.get(t.get('zone', 'Endurance'), 'RPE 6-7 (Hard)')
         if b64_audio:
             track_copy['audioBase64'] = b64_audio
         tracks_data_with_audio.append(track_copy)
@@ -398,8 +401,12 @@ def generate_embedded_html(class_data):
           <div class="metric-val" id="trackNumVal">1 / {len(tracks_data_with_audio)}</div>
         </div>
         <div class="metric-box">
+          <div class="metric-lbl">Target RPE</div>
+          <div class="metric-val" id="rpeVal" style="color:var(--accent-cyan); font-size:1.05rem; font-weight:800;"></div>
+        </div>
+        <div class="metric-box">
           <div class="metric-lbl">Song BPM</div>
-          <div class="metric-val" id="bpmVal" style="color:var(--accent-cyan)"></div>
+          <div class="metric-val" id="bpmVal" style="color:#fff;"></div>
         </div>
         <div class="metric-box">
           <div class="metric-lbl">Cadence</div>
@@ -559,6 +566,7 @@ def generate_embedded_html(class_data):
       document.getElementById('bpmVal').textContent = t.bpm || '--';
       document.getElementById('cadenceVal').textContent = t.cadence || '--';
       document.getElementById('durationVal').textContent = t.duration || '05:00';
+      if (document.getElementById('rpeVal')) document.getElementById('rpeVal').textContent = isLast ? 'RPE 1-3' : (t.rpe || 'RPE 6-7');
       document.getElementById('cuesBox').textContent = t.cues ? '"' + t.cues + '"' : '"Focus on smooth pedal cadence."';
 
       const isLast = (curIdx === CLASS_TRACKS.length - 1);
