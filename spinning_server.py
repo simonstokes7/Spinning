@@ -561,14 +561,36 @@ def generate_embedded_html(class_data):
 
       const strip = document.getElementById('movementsStrip');
       strip.innerHTML = '';
-      (t.movements || []).forEach(m => {{
-        if (m && m.name && SYMBOL_ICONS[m.name]) {{
+
+      if (isLast) {{
+        // Dedicated Post-Ride Stretch Sequence
+        const stretchList = [
+          {{ icon: '🚴', name: 'Easy Spin Down', sub: 'Lower Heart Rate', time: '0:00' }},
+          {{ icon: '🦶', name: 'Calf & Achilles', sub: 'Dismount & Heel Drop', time: '1:30' }},
+          {{ icon: '🦵', name: 'Quadriceps', sub: 'Standing Heel to Glute', time: '2:45' }},
+          {{ icon: '🧘', name: 'Hamstrings & Glutes', sub: 'Hinge at Hips', time: '3:45' }},
+          {{ icon: '🫁', name: 'Chest & Torso', sub: 'Open Up & Breathe', time: '4:45' }}
+        ];
+        stretchList.forEach(s => {{
           const card = document.createElement('div');
           card.className = 'mov-card';
-          card.innerHTML = '<img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><div style="text-align:left;"><div style="font-weight:800; font-size:1.05rem; color:#fff;">' + m.name + '</div><div style="color:var(--accent-cyan); font-weight:800; font-family:Outfit,sans-serif; font-size:0.95rem;">' + (m.time || '') + '</div></div>';
+          card.innerHTML = '<div style="font-size:1.65rem; line-height:1; margin-bottom:2px;">' + s.icon + '</div>' +
+            '<div style="text-align:left;">' +
+              '<div style="font-weight:800; font-size:0.92rem; color:#fff;">' + s.name + '</div>' +
+              '<div style="color:var(--accent-cyan); font-weight:700; font-family:Outfit,sans-serif; font-size:0.80rem;">' + s.time + ' • ' + s.sub + '</div>' +
+            '</div>';
           strip.appendChild(card);
-        }}
-      }});
+        }});
+      }} else {{
+        (t.movements || []).forEach(m => {{
+          if (m && m.name && SYMBOL_ICONS[m.name]) {{
+            const card = document.createElement('div');
+            card.className = 'mov-card';
+            card.innerHTML = '<img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><div style="text-align:left;"><div style="font-weight:800; font-size:1.05rem; color:#fff;">' + m.name + '</div><div style="color:var(--accent-cyan); font-weight:800; font-family:Outfit,sans-serif; font-size:0.95rem;">' + (m.time || '') + '</div></div>';
+            strip.appendChild(card);
+          }}
+        }});
+      }}
 
       if (t.audioBase64) {{
         if (!blobUrls[curIdx]) {{
@@ -659,23 +681,30 @@ def generate_embedded_html(class_data):
     }}
 
     function highlightMovement(curSec) {{
-      const t = CLASS_TRACKS[curIdx];
-      if (!t || !t.movements) return;
+      const isLast = (curIdx === CLASS_TRACKS.length - 1);
+      let timestamps = [];
 
-      const validMovs = (t.movements || []).filter(m => m && m.name);
-      if (validMovs.length === 0) return;
+      if (isLast) {{
+        // Dedicated stretch milestones: 0:00 (0s), 1:30 (90s), 2:45 (165s), 3:45 (225s), 4:45 (285s)
+        timestamps = [0, 90, 165, 225, 285];
+      }} else {{
+        const t = CLASS_TRACKS[curIdx];
+        if (!t || !t.movements) return;
 
-      // Parse each movement start timestamp in seconds
-      const timestamps = validMovs.map(m => {{
-        if (!m.time) return 0;
-        if (m.time.includes(':')) {{
-          const [mins, secs] = m.time.split(':').map(Number);
-          return (mins || 0) * 60 + (secs || 0);
-        }}
-        return parseInt(m.time) || 0;
-      }});
+        const validMovs = (t.movements || []).filter(m => m && m.name);
+        if (validMovs.length === 0) return;
 
-      // Find the active movement whose start timestamp <= curSec
+        timestamps = validMovs.map(m => {{
+          if (!m.time) return 0;
+          if (m.time.includes(':')) {{
+            const [mins, secs] = m.time.split(':').map(Number);
+            return (mins || 0) * 60 + (secs || 0);
+          }}
+          return parseInt(m.time) || 0;
+        }});
+      }}
+
+      // Find the active card whose start timestamp <= curSec
       let activeIdx = 0;
       for (let i = 0; i < timestamps.length; i++) {{
         if (curSec >= timestamps[i]) {{
