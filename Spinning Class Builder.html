@@ -1264,7 +1264,7 @@
 
     let classData = JSON.parse(JSON.stringify(DEFAULT_DATA));
     let activeModalTarget = null;
-    const API_BASE = window.location.protocol === 'http:' || window.location.protocol === 'https:' ? '' : 'http://127.0.0.1:8080';
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'http://127.0.0.1:8080';
 
     function init() {
       try {
@@ -2255,11 +2255,17 @@
       showToast('⏳ Overwriting & Baking "Latest Spin Class" for GitHub...');
 
       try {
-        const resp = await fetch(API_BASE + '/api/github/publish', {
+        const targetUrl = API_BASE + '/api/github/publish';
+        const resp = await fetch(targetUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ classData: classData })
         });
+
+        if (!resp.ok) {
+          throw new Error('Local server not reachable at ' + targetUrl + ' (HTTP ' + resp.status + ')');
+        }
+
         const result = await resp.json();
 
         if (result.success) {
