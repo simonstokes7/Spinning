@@ -2253,7 +2253,7 @@
     }
 
     // Export Standalone Workout for Phone
-        async function publishToGitHub() {
+    async function publishToGitHub() {
       autoSave();
       showToast('⏳ Overwriting & Baking "Latest Spin Class" for GitHub...');
 
@@ -2272,14 +2272,27 @@
         const result = await resp.json();
 
         if (result.success) {
-          if (result.pushed) {
-            showToast('🎉 Overwritten & Pushed "Latest Spin Class" (' + result.size_mb + ' MB) to GitHub!');
-          } else if (result.remote_url) {
-            showToast('✓ Committed Latest Spin Class (' + result.size_mb + ' MB)!');
-          } else {
-            alert('✓ "Latest Spin Class" was created & committed locally (' + result.size_mb + ' MB)!\n\nTo link to your private GitHub repository, run in terminal:\ngit remote add origin <your-private-github-repo-url>\ngit push -u origin main');
-            showToast('✓ Saved & Committed Latest Spin Class (' + result.size_mb + ' MB)!');
-          }
+          showToast('🚀 Baked Latest Spin Class (' + result.size_mb + ' MB)! Pushing to GitHub in background...');
+          let checks = 0;
+          const pollInterval = setInterval(async () => {
+            checks++;
+            try {
+              const stRes = await fetch(API_BASE + '/api/github/status');
+              if (stRes.ok) {
+                const st = await stRes.json();
+                if (st.status === 'success') {
+                  clearInterval(pollInterval);
+                  showToast('🎉 GitHub Upload Complete! Live site will update in ~1-2 mins.');
+                } else if (st.status === 'error') {
+                  clearInterval(pollInterval);
+                  showToast('⚠️ GitHub Push Warning: ' + st.message);
+                } else {
+                  showToast('⏳ Uploading 85MB payload to GitHub... (' + (checks * 3) + 's)');
+                }
+              }
+            } catch(e) {}
+            if (checks >= 20) clearInterval(pollInterval);
+          }, 3000);
         } else {
           alert('GitHub notice: ' + (result.error || 'Check server status'));
         }

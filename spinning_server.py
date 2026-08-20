@@ -1043,6 +1043,42 @@ def export_embedded_workout():
         headers={"Content-Disposition": f"attachment;filename={filename}"}
     )
 
+github_push_status = {
+    'status': 'idle',
+    'message': '',
+    'last_push_time': None
+}
+
+def _async_git_push(git_msg):
+    global github_push_status
+    github_push_status['status'] = 'pushing'
+    github_push_status['message'] = 'Pushing 85MB payload to GitHub...'
+    try:
+        if not os.path.exists(os.path.join(PROJECT_DIR, ".git")):
+            subprocess.run(["git", "init"], cwd=PROJECT_DIR, check=True)
+
+        subprocess.run(["git", "add", "-f", "Latest_Spin_Class_Workout.html", "index.html", "README.md", ".gitignore"], cwd=PROJECT_DIR, check=True)
+        subprocess.run(["git", "commit", "-m", git_msg], cwd=PROJECT_DIR, capture_output=True)
+
+        res = subprocess.run(["git", "remote", "get-url", "origin"], cwd=PROJECT_DIR, capture_output=True, text=True)
+        remote_url = res.stdout.strip()
+
+        if remote_url:
+            push_res = subprocess.run(["git", "push", "-u", "origin", "main"], cwd=PROJECT_DIR, capture_output=True, text=True)
+            if push_res.returncode == 0 or "Everything up-to-date" in push_res.stderr:
+                github_push_status['status'] = 'success'
+                github_push_status['message'] = 'Pushed successfully to GitHub! Live site will update in ~1-2 mins.'
+            else:
+                github_push_status['status'] = 'error'
+                github_push_status['message'] = f"Push warning: {push_res.stderr[:200]}"
+        else:
+            github_push_status['status'] = 'success'
+            github_push_status['message'] = 'Saved and committed locally.'
+    except Exception as e:
+        github_push_status['status'] = 'error'
+        github_push_status['message'] = str(e)
+    github_push_status['last_push_time'] = time.strftime('%H:%M:%S')
+
 @app.route('/api/github/publish', methods=['GET', 'POST', 'OPTIONS'])
 def publish_to_github():
     if request.method == 'OPTIONS':
@@ -1062,36 +1098,23 @@ def publish_to_github():
     with open(index_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
-    # Git operations
+    size_mb = round(os.path.getsize(latest_path) / 1024 / 1024, 1)
+
     git_msg = "Updated Latest Spin Class (Handlebar Mobile Workout)"
-    try:
-        if not os.path.exists(os.path.join(PROJECT_DIR, ".git")):
-            subprocess.run(["git", "init"], cwd=PROJECT_DIR, check=True)
+    thread = threading.Thread(target=_async_git_push, args=(git_msg,))
+    thread.daemon = True
+    thread.start()
 
-        subprocess.run(["git", "add", "-f", "Latest_Spin_Class_Workout.html", "index.html", "README.md", ".gitignore"], cwd=PROJECT_DIR, check=True)
-        subprocess.run(["git", "commit", "-m", git_msg], cwd=PROJECT_DIR, capture_output=True)
+    return jsonify({
+        'success': True,
+        'message': f'Overwritten and saved Latest Spin Class ({size_mb} MB)! Uploading to GitHub in background...',
+        'pushed': True,
+        'size_mb': size_mb
+    })
 
-        # Check if remote origin exists
-        res = subprocess.run(["git", "remote", "get-url", "origin"], cwd=PROJECT_DIR, capture_output=True, text=True)
-        remote_url = res.stdout.strip()
-
-        pushed = False
-        if remote_url:
-            push_res = subprocess.run(["git", "push", "-u", "origin", "main"], cwd=PROJECT_DIR, capture_output=True, text=True)
-            if push_res.returncode == 0 or "Everything up-to-date" in push_res.stderr:
-                pushed = True
-
-        size_mb = round(os.path.getsize(latest_path) / 1024 / 1024, 1)
-
-        return jsonify({
-            'success': True,
-            'message': f'Overwritten and saved Latest Spin Class ({size_mb} MB)!',
-            'pushed': pushed,
-            'remote_url': remote_url,
-            'size_mb': size_mb
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/api/github/status', methods=['GET'])
+def github_status():
+    return jsonify(github_push_status)
 
 @app.route('/<path:path>')
 def serve_file(path):
