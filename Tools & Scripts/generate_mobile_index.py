@@ -443,7 +443,7 @@ mobile_html = f"""<!DOCTYPE html>
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 Spin 001 - High Energy Endurance <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.1</span></h1>
+        <h1>🚴 Spin 001 - High Energy Endurance <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.2</span></h1>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <label style="cursor:pointer; font-size:0.75rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:var(--accent-cyan); padding:4px 10px; border-radius:8px; font-weight:700;" title="Attach local MP3 music files from your phone or PC">
@@ -673,46 +673,13 @@ mobile_html = f"""<!DOCTYPE html>
         togglePlay();
       }} else {{
         isPlaying = false;
-        stopSynthMetronome();
         stopSynthTimer();
         document.getElementById('playBtn').textContent = '▶ Play Workout';
       }}
     }}
 
-    let synthInterval = null;
     let synthTimerInterval = null;
     let synthStartTime = 0;
-
-    function startSynthMetronome(bpmVal) {{
-      stopSynthMetronome();
-      const bpm = parseInt(bpmVal) || 120;
-      const intervalMs = (60 / bpm) * 1000;
-      
-      synthInterval = setInterval(() => {{
-        if (!isPlaying) return;
-        try {{
-          initAudioContext();
-          if (!audioCtx) return;
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.08);
-        }} catch(e) {{}}
-      }}, intervalMs);
-    }}
-
-    function stopSynthMetronome() {{
-      if (synthInterval) {{
-        clearInterval(synthInterval);
-        synthInterval = null;
-      }}
-    }}
 
     function startSynthTimer() {{
       stopSynthTimer();
@@ -768,22 +735,18 @@ mobile_html = f"""<!DOCTYPE html>
       if (!isPlaying) {{
         audio.play().then(() => {{
           isPlaying = true;
-          stopSynthMetronome();
           stopSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
           document.getElementById('statusDisplay').textContent = 'Playing Music';
         }}).catch(e => {{
-          console.log('MP3 unavail, starting Metronome beat mode:', e);
+          console.log('MP3 unavail, starting Workout Timer mode:', e);
           isPlaying = true;
-          const trk = CLASS_TRACKS[curIdx];
-          startSynthMetronome(trk ? trk.bpm : 120);
           startSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
-          document.getElementById('statusDisplay').textContent = 'Playing (Metronome ' + (trk ? trk.bpm : 120) + ' BPM)';
+          document.getElementById('statusDisplay').textContent = 'Playing (Timer)';
         }});
       }} else {{
         audio.pause();
-        stopSynthMetronome();
         stopSynthTimer();
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play Workout';

@@ -466,7 +466,7 @@ def generate_embedded_html(class_data):
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.1</span></h1>
+        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.2</span></h1>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
@@ -530,9 +530,6 @@ def generate_embedded_html(class_data):
         </button>
         <button class="sound-chip active" id="beepBtn" onclick="toggleBeeps()" title="Toggle 3-2-1 countdown beeps">
           🔔 Beeps: ON
-        </button>
-        <button class="sound-chip" id="metroBtn" onclick="toggleMetronome()" title="Toggle synthesized pedal cadence clicker">
-          🥁 Metronome: OFF
         </button>
         <button class="sound-chip" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle Fullscreen Mode">
           🖥️ Fullscreen
@@ -638,35 +635,6 @@ def generate_embedded_html(class_data):
       btn.textContent = beepsEnabled ? '🔔 Beeps: ON' : '🔕 Beeps: OFF';
       btn.classList.toggle('active', beepsEnabled);
       if (beepsEnabled) playCountdownBeep(false);
-    }}
-
-    function toggleMetronome() {{
-      metronomeEnabled = !metronomeEnabled;
-      const btn = document.getElementById('metroBtn');
-      btn.textContent = metronomeEnabled ? '🥁 Metronome: ON' : '🥁 Metronome: OFF';
-      btn.classList.toggle('active', metronomeEnabled);
-      updateMetronomeState();
-    }}
-
-    function updateMetronomeState() {{
-      if (metronomeInterval) {{
-        clearInterval(metronomeInterval);
-        metronomeInterval = null;
-      }}
-      if (!metronomeEnabled || !isPlaying) return;
-
-      const t = CLASS_TRACKS[curIdx];
-      if (!t || !t.cadence) return;
-
-      let rpm = 80;
-      const match = String(t.cadence).match(/\\d+/);
-      if (match) rpm = parseInt(match[0]);
-      if (rpm < 40) rpm = 80;
-
-      const ms = (60 / rpm) * 1000;
-      metronomeInterval = setInterval(() => {{
-        playTone(1200, 0.03, 'triangle', 0.08);
-      }}, ms);
     }}
 
     function toggleFullscreen() {{
@@ -868,47 +836,14 @@ def generate_embedded_html(class_data):
         togglePlay();
       }} else {{
         isPlaying = false;
-        stopSynthMetronome();
         stopSynthTimer();
         document.getElementById('playBtn').textContent = '▶ Play Workout';
         document.getElementById('cadenceBox').classList.remove('pulse-ring');
       }}
     }}
 
-    let synthInterval = null;
     let synthTimerInterval = null;
     let synthStartTime = 0;
-
-    function startSynthMetronome(bpmVal) {{
-      stopSynthMetronome();
-      const bpm = parseInt(bpmVal) || 120;
-      const intervalMs = (60 / bpm) * 1000;
-      
-      synthInterval = setInterval(() => {{
-        if (!isPlaying) return;
-        try {{
-          initAudioContext();
-          if (!audioCtx) return;
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.08);
-        }} catch(e) {{}}
-      }}, intervalMs);
-    }}
-
-    function stopSynthMetronome() {{
-      if (synthInterval) {{
-        clearInterval(synthInterval);
-        synthInterval = null;
-      }}
-    }}
 
     function startSynthTimer() {{
       stopSynthTimer();
@@ -953,31 +888,25 @@ def generate_embedded_html(class_data):
       if (!isPlaying) {{
         audio.play().then(() => {{
           isPlaying = true;
-          stopSynthMetronome();
           stopSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
           document.getElementById('statusDisplay').textContent = 'Playing Music';
           document.getElementById('cadenceBox').classList.add('pulse-ring');
-          updateMetronomeState();
         }}).catch(e => {{
-          console.log('MP3 unavail, starting Metronome beat mode:', e);
+          console.log('MP3 unavail, starting Workout Timer mode:', e);
           isPlaying = true;
-          const trk = CLASS_TRACKS[curIdx];
-          startSynthMetronome(trk ? trk.bpm : 120);
           startSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
-          document.getElementById('statusDisplay').textContent = 'Playing (Metronome ' + (trk ? trk.bpm : 120) + ' BPM)';
+          document.getElementById('statusDisplay').textContent = 'Playing (Timer)';
           document.getElementById('cadenceBox').classList.add('pulse-ring');
         }});
       }} else {{
         audio.pause();
-        stopSynthMetronome();
         stopSynthTimer();
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play Workout';
         document.getElementById('statusDisplay').textContent = 'Paused';
         document.getElementById('cadenceBox').classList.remove('pulse-ring');
-        updateMetronomeState();
       }}
     }}
 
@@ -996,7 +925,6 @@ def generate_embedded_html(class_data):
         document.getElementById('playBtn').textContent = '▶ Play';
         document.getElementById('statusDisplay').textContent = 'Class Completed! 🎉';
         document.getElementById('cadenceBox').classList.remove('pulse-ring');
-        updateMetronomeState();
       }}
     }}
 
