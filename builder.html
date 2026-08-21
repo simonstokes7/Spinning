@@ -1455,6 +1455,19 @@
           }
         }
 
+        const playerHtml = '<div class="builder-player-bar" style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.35); border:1px solid rgba(0,229,255,0.2); border-radius:8px; padding:6px 12px; margin-top:8px; margin-bottom:10px; flex-wrap:wrap;">' +
+          '<button class="btn btn-outline btn-sm" id="builderPlayBtn_' + tIdx + '" onclick="toggleBuilderAudio(' + tIdx + ')" style="padding:4px 14px; font-weight:800; font-size:0.82rem; border-color:var(--accent-cyan); color:#fff; min-width:90px; background:rgba(0,229,255,0.12);">' +
+            '▶ Play' +
+          '</button>' +
+          '<span id="builderTimeDisplay_' + tIdx + '" style="font-family:\'Outfit\',sans-serif; font-weight:800; font-size:0.88rem; color:var(--accent-cyan); min-width:95px;">00:00 / ' + (track.duration || '05:00') + '</span>' +
+          '<div id="builderProgressWrap_' + tIdx + '" style="flex-grow:1; min-width:120px; height:8px; background:rgba(255,255,255,0.12); border-radius:4px; cursor:pointer; position:relative; overflow:hidden;" onclick="seekBuilderAudio(' + tIdx + ', event)" title="Click to seek audio position">' +
+            '<div id="builderProgressFill_' + tIdx + '" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-cyan), #7c4dff); border-radius:4px; transition:width 0.1s linear;"></div>' +
+          '</div>' +
+          '<button class="btn btn-outline btn-sm" onclick="insertLiveTimeIntoSlot(' + tIdx + ')" title="⏱️ Insert current live audio timestamp into next movement slot" style="font-size:0.75rem; padding:3px 8px; border-color:rgba(0,229,255,0.4); color:var(--accent-cyan);">' +
+            '⏱️ Use Timestamp' +
+          '</button>' +
+        '</div>';
+
         card.innerHTML = '<div class="track-card-border" style="background: ' + zoneColor + '"></div>' +
           '<div class="track-main-row">' +
             '<div class="track-num">' + (tIdx + 1) + '</div>' +
@@ -1502,6 +1515,7 @@
               '<button class="icon-btn delete-btn" onclick="deleteTrack(' + tIdx + ')" title="Delete Track">🗑️</button>' +
             '</div>' +
           '</div>' +
+          playerHtml +
           (isLastTrack ? '' :
             '<div class="movements-section">' +
               '<div class="movements-label">' +
@@ -2195,6 +2209,135 @@
         }
       };
       reader.readAsText(file);
+    }
+
+    // Builder Inline Audio Player Engine
+    let currentPlayingBuilderIdx = -1;
+    let builderAudio = new Audio();
+
+    builderAudio.addEventListener('timeupdate', () => {
+      if (currentPlayingBuilderIdx === -1) return;
+      const cur = builderAudio.currentTime || 0;
+      const dur = builderAudio.duration || 1;
+      const pct = (cur / dur) * 100;
+
+      const curM = Math.floor(cur / 60);
+      const curS = Math.floor(cur % 60);
+      const durM = Math.floor(dur / 60);
+      const durS = Math.floor(dur % 60);
+
+      const curStr = curM + ':' + (curS < 10 ? '0' : '') + curS;
+      const durStr = (isNaN(dur) || dur <= 0) ? '--:--' : (durM + ':' + (durS < 10 ? '0' : '') + durS);
+
+      const fillEl = document.getElementById('builderProgressFill_' + currentPlayingBuilderIdx);
+      if (fillEl) fillEl.style.width = pct + '%';
+
+      const timeEl = document.getElementById('builderTimeDisplay_' + currentPlayingBuilderIdx);
+      if (timeEl) timeEl.textContent = curStr + ' / ' + durStr;
+    });
+
+    builderAudio.addEventListener('ended', () => {
+      if (currentPlayingBuilderIdx !== -1) {
+        updateBuilderPlayerUI(currentPlayingBuilderIdx, false);
+        currentPlayingBuilderIdx = -1;
+      }
+    });
+
+    function toggleBuilderAudio(tIdx) {
+      if (!classData || !classData.tracks || !classData.tracks[tIdx]) return;
+      const track = classData.tracks[tIdx];
+
+      if (currentPlayingBuilderIdx === tIdx && !builderAudio.paused) {
+        builderAudio.pause();
+        updateBuilderPlayerUI(tIdx, false);
+        return;
+      }
+
+      if (currentPlayingBuilderIdx !== -1 && currentPlayingBuilderIdx !== tIdx) {
+        builderAudio.pause();
+        updateBuilderPlayerUI(currentPlayingBuilderIdx, false);
+      }
+
+      currentPlayingBuilderIdx = tIdx;
+
+      let src = '';
+      if (track.audioBase64) {
+        src = track.audioBase64;
+      } else if (track.audioFile instanceof File) {
+        src = URL.createObjectURL(track.audioFile);
+      } else if (track.audioUrl) {
+        src = track.audioUrl;
+      } else {
+        src = 'audio/track' + (tIdx + 1) + '.mp3';
+      }
+
+      if (builderAudio.src !== src) {
+        builderAudio.src = src;
+      }
+
+      builderAudio.play().then(() => {
+        updateBuilderPlayerUI(tIdx, true);
+        showToast('▶ Playing Track ' + (tIdx + 1) + ': "' + track.name + '"');
+      }).catch(err => {
+        console.log('Audio play error, prompting file select:', err);
+        triggerReplaceTrackFile(tIdx);
+      });
+    }
+
+    function seekBuilderAudio(tIdx, e) {
+      if (!builderAudio.duration) return;
+      const wrap = document.getElementById('builderProgressWrap_' + tIdx);
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      
+      if (currentPlayingBuilderIdx !== tIdx) {
+        toggleBuilderAudio(tIdx);
+      }
+      builderAudio.currentTime = pct * builderAudio.duration;
+    }
+
+    function updateBuilderPlayerUI(tIdx, isPlaying) {
+      const btn = document.getElementById('builderPlayBtn_' + tIdx);
+      if (btn) {
+        btn.innerHTML = isPlaying ? '⏸ Pause' : '▶ Play';
+        btn.style.background = isPlaying ? 'rgba(0, 230, 118, 0.25)' : 'rgba(0, 229, 255, 0.15)';
+        btn.style.borderColor = isPlaying ? '#00e676' : 'var(--accent-cyan)';
+      }
+    }
+
+    function insertLiveTimeIntoSlot(tIdx) {
+      if (!classData || !classData.tracks || !classData.tracks[tIdx]) return;
+      const track = classData.tracks[tIdx];
+
+      let curSec = 0;
+      if (currentPlayingBuilderIdx === tIdx && builderAudio && !isNaN(builderAudio.currentTime)) {
+        curSec = builderAudio.currentTime;
+      }
+      const mins = Math.floor(curSec / 60);
+      const secs = Math.floor(curSec % 60);
+      const timeStr = mins + ':' + (secs < 10 ? '0' : '') + secs;
+
+      if (!track.movements) track.movements = [null, null, null, null, null, null];
+      let targetSlot = -1;
+      for (let i = 0; i < 6; i++) {
+        const m = track.movements[i];
+        if (m && m.name && (!m.time || m.time === '0:00')) {
+          targetSlot = i;
+          break;
+        } else if (!m) {
+          targetSlot = i;
+          break;
+        }
+      }
+
+      if (targetSlot !== -1 && track.movements[targetSlot]) {
+        track.movements[targetSlot].time = timeStr;
+        renderTracks();
+        showToast('⏱️ Inserted timestamp ' + timeStr + ' into Slot ' + (targetSlot + 1) + '!');
+      } else {
+        showToast('⏱️ Live audio time: ' + timeStr);
+      }
     }
 
     function resetToSample() {
