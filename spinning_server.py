@@ -466,7 +466,7 @@ def generate_embedded_html(class_data):
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.0</span></h1>
+        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.1</span></h1>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
@@ -1471,6 +1471,15 @@ def import_musicbee_playlist():
     }
 
     return jsonify({'success': True, 'classData': class_data})
+
+@app.route('/api/audio/stream', methods=['GET'])
+def stream_audio_file():
+    file_path = request.args.get('path', '')
+    if file_path and os.path.exists(file_path):
+        directory = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        return send_from_directory(directory, filename, conditional=True)
+    return jsonify({'error': 'Audio file not found on disk'}), 404
 
 @app.route('/api/workout/export-embedded', methods=['GET', 'POST', 'OPTIONS'])
 def export_embedded_workout():
