@@ -16,16 +16,23 @@ A mobile single-screen cockpit designed for indoor cycling bikes and bike handle
 
 ---
 
-## 🚀 How to Run on Your Phone:
+## 📚 Documentation & Guides
 
-### Method 1: Open Directly on Phone (Offline via USB)
+- **[🚴 Instructor User Guide & System Manual](Spinning_Instructor_Guide_and_Workflow.md)**: Complete step-by-step guide for instructors to build, customize, save, import/export, and teach Spin classes.
+- **[🤝 Class Sharing & Collaboration Guide](Sharing_and_Building_Classes_Guide.md)**: Guide for sharing class profiles and collaborating with other instructors.
+
+---
+
+## 🚀 How to Run:
+
+### Method 1: Live Web Builder & Cockpit (GitHub Pages)
+- **🚴 Cockpit HUD**: [https://simonstokes7.github.io/Spinning/](https://simonstokes7.github.io/Spinning/)
+- **🛠️ Track Builder**: [https://simonstokes7.github.io/Spinning/builder.html](https://simonstokes7.github.io/Spinning/builder.html)
+
+### Method 2: Offline / Phone Download
 1. Download **`index.html`** or **`Latest_Spin_Class_Workout.html`** from this repository.
 2. Copy it via USB cable to your phone.
-3. Tap to open in Safari (iOS) or Chrome (Android)—no internet needed!
-
-### Method 2: Live Web Cockpit (GitHub Pages)
-If GitHub Pages is enabled on this repository:
-👉 **[https://simonstokes7.github.io/Spinning/](https://simonstokes7.github.io/Spinning/)**
+3. Open in Safari (iOS) or Chrome (Android)—no internet needed!
 
 ---
 
