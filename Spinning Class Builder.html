@@ -879,7 +879,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.7.0</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.8.0</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
@@ -1751,6 +1751,8 @@
       });
     }
 
+    const syncChannel = new BroadcastChannel('spinning_live_sync');
+
     // Auto-save & Library Management
     function autoSave() {
       if (!classData) classData = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -1766,6 +1768,7 @@
       
       try {
         localStorage.setItem('spinning_builder_class_v30', JSON.stringify(classData));
+        syncChannel.postMessage({ type: 'UPDATE_CLASS', classData: classData });
       } catch(e) {}
       updateStats();
     }

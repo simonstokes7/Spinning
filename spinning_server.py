@@ -3,6 +3,8 @@ import json
 import re
 import base64
 import subprocess
+import threading
+import time
 from flask import Flask, send_from_directory, jsonify, request, Response
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
@@ -47,7 +49,7 @@ def get_all_known_mp3s():
 
 def generate_embedded_html(class_data):
     tracks = class_data.get('tracks', [])
-    title = "Latest Spin Class"
+    workout_title = class_data.get('title') or "Spin 001 - High Energy Endurance"
     playlist_name = class_data.get('playlistName', '')
 
     all_known_mp3s = get_all_known_mp3s()
@@ -464,7 +466,7 @@ def generate_embedded_html(class_data):
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.7.0</span></h1>
+        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.0</span></h1>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
@@ -1121,6 +1123,27 @@ def generate_embedded_html(class_data):
           c.classList.remove('mov-upcoming-flash');
         }}
       }});
+    const syncChannel = new BroadcastChannel('spinning_live_sync');
+    syncChannel.onmessage = (event) => {{
+      if (event.data && event.data.type === 'UPDATE_CLASS' && event.data.classData) {{
+        applyLiveSyncData(event.data.classData);
+      }}
+    }};
+    window.addEventListener('storage', (e) => {{
+      if (e.key === 'spinning_builder_class_v30' && e.newValue) {{
+        try {{
+          const parsed = JSON.parse(e.newValue);
+          applyLiveSyncData(parsed);
+        }} catch(err) {{}}
+      }}
+    }});
+
+    function applyLiveSyncData(newClassData) {{
+      if (!newClassData || !newClassData.tracks) return;
+      CLASS_TRACKS = newClassData.tracks;
+      if (curIdx >= CLASS_TRACKS.length) curIdx = 0;
+      loadTrack(curIdx);
+      showToast('⚡ Live Synced with Builder!');
     }}
 
     window.onload = init;
