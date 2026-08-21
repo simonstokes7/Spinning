@@ -103,7 +103,7 @@ def generate_embedded_html(class_data):
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>🚴 Latest Spin Class - Handlebar Cockpit</title>
+  <title>🚴 {workout_title} - Handlebar Cockpit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -132,6 +132,7 @@ def generate_embedded_html(class_data):
       color: var(--text-main);
       font-family: 'Inter', sans-serif;
       user-select: none;
+      transition: background 0.5s ease;
     }}
 
     .screen-container {{
@@ -191,6 +192,7 @@ def generate_embedded_html(class_data):
       letter-spacing: 0.08em;
       text-transform: uppercase;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      transition: all 0.4s ease;
     }}
 
     .song-title {{
@@ -227,6 +229,7 @@ def generate_embedded_html(class_data):
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
       padding: 6px 8px;
+      transition: all 0.3s ease;
     }}
     .metric-lbl {{
       font-size: 0.68rem;
@@ -244,6 +247,49 @@ def generate_embedded_html(class_data):
       line-height: 1.1;
     }}
 
+    .cadence-highlight {{
+      border: 2px solid var(--accent-cyan) !important;
+      background: rgba(0, 229, 255, 0.15) !important;
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
+    }}
+
+    @keyframes beatPulse {{
+      0% {{ transform: scale(1); box-shadow: 0 0 10px rgba(0,229,255,0.4); }}
+      50% {{ transform: scale(1.05); box-shadow: 0 0 24px rgba(0,229,255,0.9); }}
+      100% {{ transform: scale(1); box-shadow: 0 0 10px rgba(0,229,255,0.4); }}
+    }}
+    .pulse-ring {{
+      animation: beatPulse 0.75s infinite ease-in-out;
+    }}
+
+    .mov-banner {{
+      width: 100%;
+      max-width: 620px;
+      background: rgba(0, 229, 255, 0.08);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-align: center;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }}
+    .mov-banner.warning-flash {{
+      background: rgba(255, 23, 68, 0.3) !important;
+      border-color: #ff1744 !important;
+      box-shadow: 0 0 20px rgba(255, 23, 68, 0.8) !important;
+      animation: bannerPulse 0.7s infinite ease-in-out;
+    }}
+    @keyframes bannerPulse {{
+      0%, 100% {{ opacity: 1; transform: scale(1.01); }}
+      50% {{ opacity: 0.85; transform: scale(1.0); }}
+    }}
+
     .progress-deck {{
       width: 100%;
       max-width: 620px;
@@ -253,7 +299,7 @@ def generate_embedded_html(class_data):
     }}
     .progress-bar-wrap {{
       width: 100%;
-      height: 9px;
+      height: 10px;
       background: rgba(255, 255, 255, 0.14);
       border-radius: 6px;
       overflow: hidden;
@@ -273,6 +319,34 @@ def generate_embedded_html(class_data):
       font-size: 0.95rem;
       font-weight: 700;
       color: #cbd5e1;
+    }}
+
+    .audio-controls-row {{
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      width: 100%;
+      max-width: 620px;
+      flex-wrap: wrap;
+    }}
+    .sound-chip {{
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }}
+    .sound-chip.active {{
+      background: rgba(0, 229, 255, 0.2);
+      border-color: var(--accent-cyan);
+      color: #fff;
     }}
 
     .movements-strip {{
@@ -304,6 +378,23 @@ def generate_embedded_html(class_data):
       background: rgba(0, 229, 255, 0.25) !important;
       box-shadow: 0 0 18px rgba(0, 229, 255, 0.9) !important;
       transform: scale(1.05);
+    }}
+    @keyframes movFlash {{
+      0%, 100% {{
+        border-color: #ffd700 !important;
+        background: rgba(255, 215, 0, 0.45) !important;
+        box-shadow: 0 0 22px rgba(255, 215, 0, 0.95) !important;
+        transform: scale(1.06);
+      }}
+      50% {{
+        border-color: #ff9100 !important;
+        background: rgba(255, 145, 0, 0.15) !important;
+        box-shadow: 0 0 6px rgba(255, 145, 0, 0.3) !important;
+        transform: scale(1.0);
+      }}
+    }}
+    .mov-upcoming-flash {{
+      animation: movFlash 0.75s infinite ease-in-out !important;
     }}
 
     .cues-box {{
@@ -373,13 +464,16 @@ def generate_embedded_html(class_data):
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 Latest Spin Class</h1>
+        <h1>🚴 {workout_title}</h1>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
+      <div style="display:flex; gap:8px; align-items:center;">
         <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
           ⏱️ 00:00 / 00:00
         </div>
-        <div class="clock-pill" id="liveClock" style="font-size:0.85rem; color:var(--text-muted); padding:6px 12px; font-weight:600;" title="Local Time of Day">
+        <div class="clock-pill" id="wakeLockStatus" style="font-size:0.75rem; background:rgba(0,230,118,0.15); border:1px solid var(--zone-endurance); color:var(--zone-endurance); padding:4px 8px; border-radius:12px; font-weight:700;" title="Screen Wake Lock Status">
+          💡 AWAKE
+        </div>
+        <div class="clock-pill" id="liveClock" style="font-size:0.85rem; color:var(--text-muted); padding:4px 8px; font-weight:600;" title="Local Time of Day">
           🕒 00:00
         </div>
       </div>
@@ -390,7 +484,12 @@ def generate_embedded_html(class_data):
       <div style="text-align:center;">
         <div class="song-title" id="songTitle"></div>
         <div class="song-artist" id="songArtist"></div>
-        <div id="songDurationPill" style="font-size:1.3rem; font-weight:800; color:var(--accent-cyan); margin: 12px 0 16px 0; text-align:center; letter-spacing:0.5px;"></div>
+        <div id="songDurationPill" style="font-size:1.25rem; font-weight:800; color:var(--accent-cyan); margin: 8px 0 10px 0; text-align:center; letter-spacing:0.5px;"></div>
+      </div>
+
+      <div class="mov-banner" id="movBanner">
+        <span id="movBannerCurrent">⚡ CURRENT: Seated Flat</span>
+        <span id="movBannerNext" style="color:var(--accent-orange); font-weight:800; display:none;">▶ NEXT IN 10s: Standing Climb ⚡</span>
       </div>
 
       <div class="metrics-row">
@@ -406,7 +505,7 @@ def generate_embedded_html(class_data):
           <div class="metric-lbl">Song BPM</div>
           <div class="metric-val" id="bpmVal" style="color:var(--accent-cyan)"></div>
         </div>
-        <div class="metric-box">
+        <div class="metric-box cadence-highlight" id="cadenceBox">
           <div class="metric-lbl">Cadence</div>
           <div class="metric-val" id="cadenceVal" style="font-size:1.35rem; color:#fff;"></div>
         </div>
@@ -421,6 +520,21 @@ def generate_embedded_html(class_data):
         <div class="progress-bar-wrap" onclick="seekAudio(event)">
           <div class="progress-fill" id="progressFill"></div>
         </div>
+      </div>
+
+      <div class="audio-controls-row">
+        <button class="sound-chip active" id="soundFxBtn" onclick="toggleSoundFx()" title="Toggle Web Audio sound effects">
+          🔊 Sound: ON
+        </button>
+        <button class="sound-chip active" id="beepBtn" onclick="toggleBeeps()" title="Toggle 3-2-1 countdown beeps">
+          🔔 Beeps: ON
+        </button>
+        <button class="sound-chip" id="metroBtn" onclick="toggleMetronome()" title="Toggle synthesized pedal cadence clicker">
+          🥁 Metronome: OFF
+        </button>
+        <button class="sound-chip" id="fullscreenBtn" onclick="toggleFullscreen()" title="Toggle Fullscreen Mode">
+          🖥️ Fullscreen
+        </button>
       </div>
 
       <div class="movements-strip" id="movementsStrip"></div>
@@ -454,6 +568,115 @@ def generate_embedded_html(class_data):
     let wakeLock = null;
     let blobUrls = {{}};
 
+    // Web Audio Synthesizer Engine
+    let audioCtx = null;
+    let soundEnabled = true;
+    let beepsEnabled = true;
+    let metronomeEnabled = false;
+    let metronomeInterval = null;
+    let lastBeepSec = -1;
+    let prevActiveMovIdx = -1;
+
+    function initAudioContext() {{
+      if (!audioCtx) {{
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }}
+      if (audioCtx && audioCtx.state === 'suspended') {{
+        audioCtx.resume();
+      }}
+    }}
+
+    function playTone(freq, dur, type='sine', gainVal=0.15) {{
+      if (!soundEnabled) return;
+      try {{
+        initAudioContext();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      }} catch(e) {{}}
+    }}
+
+    function playCountdownBeep(isFinal=false) {{
+      if (!beepsEnabled || !soundEnabled) return;
+      if (isFinal) {{
+        playTone(1050, 0.1, 'sine', 0.25);
+        setTimeout(() => playTone(1400, 0.25, 'triangle', 0.3), 100);
+      }} else {{
+        playTone(780, 0.12, 'square', 0.2);
+      }}
+    }}
+
+    function playZoneChime() {{
+      if (!soundEnabled) return;
+      playTone(523.25, 0.08, 'sine', 0.15);
+      setTimeout(() => playTone(659.25, 0.08, 'sine', 0.15), 90);
+      setTimeout(() => playTone(783.99, 0.22, 'sine', 0.2), 180);
+    }}
+
+    function toggleSoundFx() {{
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('soundFxBtn');
+      btn.textContent = soundEnabled ? '🔊 Sound: ON' : '🔇 Muted';
+      btn.classList.toggle('active', soundEnabled);
+      if (soundEnabled) playTone(880, 0.1);
+    }}
+
+    function toggleBeeps() {{
+      beepsEnabled = !beepsEnabled;
+      const btn = document.getElementById('beepBtn');
+      btn.textContent = beepsEnabled ? '🔔 Beeps: ON' : '🔕 Beeps: OFF';
+      btn.classList.toggle('active', beepsEnabled);
+      if (beepsEnabled) playCountdownBeep(false);
+    }}
+
+    function toggleMetronome() {{
+      metronomeEnabled = !metronomeEnabled;
+      const btn = document.getElementById('metroBtn');
+      btn.textContent = metronomeEnabled ? '🥁 Metronome: ON' : '🥁 Metronome: OFF';
+      btn.classList.toggle('active', metronomeEnabled);
+      updateMetronomeState();
+    }}
+
+    function updateMetronomeState() {{
+      if (metronomeInterval) {{
+        clearInterval(metronomeInterval);
+        metronomeInterval = null;
+      }}
+      if (!metronomeEnabled || !isPlaying) return;
+
+      const t = CLASS_TRACKS[curIdx];
+      if (!t || !t.cadence) return;
+
+      let rpm = 80;
+      const match = String(t.cadence).match(/\\d+/);
+      if (match) rpm = parseInt(match[0]);
+      if (rpm < 40) rpm = 80;
+
+      const ms = (60 / rpm) * 1000;
+      metronomeInterval = setInterval(() => {{
+        playTone(1200, 0.03, 'triangle', 0.08);
+      }}, ms);
+    }}
+
+    function toggleFullscreen() {{
+      if (!document.fullscreenElement) {{
+        document.documentElement.requestFullscreen().catch(e => {{}});
+        document.getElementById('fullscreenBtn').textContent = '📱 Exit Full';
+      }} else {{
+        if (document.exitFullscreen) document.exitFullscreen();
+        document.getElementById('fullscreenBtn').textContent = '🖥️ Fullscreen';
+      }}
+    }}
+
     function b64ToBlobUrl(b64Data) {{
       try {{
         const parts = b64Data.split(',');
@@ -478,7 +701,6 @@ def generate_embedded_html(class_data):
       return parseInt(durStr) || 300;
     }}
 
-    // Calculate total workout time excluding the final cool-down track
     const workoutTracks = CLASS_TRACKS.slice(0, Math.max(1, CLASS_TRACKS.length - 1));
     let totalWorkoutSecs = 0;
     workoutTracks.forEach(t => {{
@@ -490,7 +712,6 @@ def generate_embedded_html(class_data):
       let totalElapsed = 0;
 
       if (isLast) {{
-        // On cool-down track, workout is finished (cap at total active workout time)
         totalElapsed = totalWorkoutSecs;
       }} else {{
         let elapsedPrior = 0;
@@ -514,6 +735,21 @@ def generate_embedded_html(class_data):
       }}
     }}
 
+    function requestScreenWakeLock() {{
+      try {{
+        if ('wakeLock' in navigator) {{
+          navigator.wakeLock.request('screen').then(lock => {{
+            wakeLock = lock;
+            const statusEl = document.getElementById('wakeLockStatus');
+            if (statusEl) statusEl.textContent = '💡 AWAKE';
+          }}).catch(e => {{
+            const statusEl = document.getElementById('wakeLockStatus');
+            if (statusEl) statusEl.textContent = '💡 READY';
+          }});
+        }}
+      }} catch(e) {{}}
+    }}
+
     function init() {{
       audio = document.getElementById('audioEngine');
       audio.addEventListener('timeupdate', onTimeUpdate);
@@ -529,11 +765,11 @@ def generate_embedded_html(class_data):
         }}
       }}, {{ passive: true }});
 
-      try {{
-        if ('wakeLock' in navigator) {{
-          navigator.wakeLock.request('screen').then(lock => {{ wakeLock = lock; }});
-        }}
-      }} catch(e) {{}}
+      document.addEventListener('click', () => {{ initAudioContext(); }}, {{ once: true }});
+      requestScreenWakeLock();
+      document.addEventListener('visibilitychange', () => {{
+        if (document.visibilityState === 'visible') requestScreenWakeLock();
+      }});
 
       setInterval(() => {{
         const now = new Date();
@@ -551,6 +787,8 @@ def generate_embedded_html(class_data):
 
     function loadTrack(idx, autoPlay = true) {{
       curIdx = idx;
+      prevActiveMovIdx = -1;
+      lastBeepSec = -1;
       const t = CLASS_TRACKS[curIdx];
       if (!t) return;
 
@@ -558,8 +796,11 @@ def generate_embedded_html(class_data):
       document.getElementById('songTitle').textContent = t.name;
       document.getElementById('songArtist').textContent = t.artist || '';
       document.getElementById('songDurationPill').textContent = t.duration || '05:00';
-      const rpeNum = t.target_rpe || t.rpe || '5';
-      document.getElementById('targetRpeVal').textContent = 'RPE ' + rpeNum;
+      const rawRpe = String(t.rpe || t.target_rpe || '6').trim();
+      const rpeDisplay = rawRpe.startsWith('RPE') ? rawRpe : ('RPE ' + rawRpe);
+      if (document.getElementById('targetRpeVal')) {{
+        document.getElementById('targetRpeVal').textContent = rpeDisplay;
+      }}
       document.getElementById('bpmVal').textContent = t.bpm || '--';
       document.getElementById('cadenceVal').textContent = t.cadence || '--';
       document.getElementById('cuesBox').textContent = t.cues ? '"' + t.cues + '"' : '"Focus on smooth pedal cadence."';
@@ -572,17 +813,19 @@ def generate_embedded_html(class_data):
       badge.style.color = zColor;
       badge.style.border = '1px solid ' + zColor;
 
+      // Dynamically tint background glow
+      document.body.style.background = 'radial-gradient(circle at 50% 20%, ' + zColor + '22 0%, var(--bg-main) 80%)';
+
       const strip = document.getElementById('movementsStrip');
       strip.innerHTML = '';
 
       if (isLast) {{
-        // Dedicated Post-Ride Stretch Sequence
         const stretchList = [
-          {{ icon: '🚴', name: 'Easy Spin Down', sub: 'Lower Heart Rate', time: '0:00' }},
-          {{ icon: '🦶', name: 'Calf & Achilles', sub: 'Dismount & Heel Drop', time: '1:30' }},
-          {{ icon: '🦵', name: 'Quadriceps', sub: 'Standing Heel to Glute', time: '2:45' }},
-          {{ icon: '🧘', name: 'Hamstrings & Glutes', sub: 'Hinge at Hips', time: '3:45' }},
-          {{ icon: '🫁', name: 'Chest & Torso', sub: 'Open Up & Breathe', time: '4:45' }}
+          {{ icon: '🙆', name: 'Chest & Shoulders', time: '0:00', sub: 'Deep Breathing' }},
+          {{ icon: '🚴', name: 'Hamstring Stretch', time: '1:30', sub: 'Left & Right' }},
+          {{ icon: '🦵', name: 'Quadriceps Stretch', time: '2:45', sub: 'Standing Balance' }},
+          {{ icon: '🧘', name: 'Calf & Achilles', time: '3:45', sub: 'Heel Press' }},
+          {{ icon: '✨', name: 'Full Body Release', time: '4:45', sub: 'Great Ride!' }}
         ];
         stretchList.forEach(s => {{
           const card = document.createElement('div');
@@ -624,19 +867,26 @@ def generate_embedded_html(class_data):
           isPlaying = true;
           document.getElementById('playBtn').textContent = '⏸ Pause';
           document.getElementById('statusDisplay').textContent = 'Playing';
+          document.getElementById('cadenceBox').classList.add('pulse-ring');
+          playZoneChime();
+          updateMetronomeState();
         }}).catch(e => console.log('Playback error:', e));
       }} else {{
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play Workout';
+        document.getElementById('cadenceBox').classList.remove('pulse-ring');
       }}
     }}
 
     function togglePlay() {{
+      initAudioContext();
       if (audio.paused) {{
         audio.play().then(() => {{
           isPlaying = true;
           document.getElementById('playBtn').textContent = '⏸ Pause';
           document.getElementById('statusDisplay').textContent = 'Playing';
+          document.getElementById('cadenceBox').classList.add('pulse-ring');
+          updateMetronomeState();
         }}).catch(e => {{
           console.log('Play failed:', e);
           document.getElementById('statusDisplay').textContent = 'Tap to retry';
@@ -646,6 +896,8 @@ def generate_embedded_html(class_data):
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play Workout';
         document.getElementById('statusDisplay').textContent = 'Paused';
+        document.getElementById('cadenceBox').classList.remove('pulse-ring');
+        updateMetronomeState();
       }}
     }}
 
@@ -663,6 +915,8 @@ def generate_embedded_html(class_data):
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play';
         document.getElementById('statusDisplay').textContent = 'Class Completed! 🎉';
+        document.getElementById('cadenceBox').classList.remove('pulse-ring');
+        updateMetronomeState();
       }}
     }}
 
@@ -693,13 +947,27 @@ def generate_embedded_html(class_data):
       audio.currentTime = pct * audio.duration;
     }}
 
+    function parseTimestampSecs(timeStr) {{
+      if (!timeStr) return 0;
+      let str = String(timeStr).trim().toLowerCase();
+      if (str.includes(':')) {{
+        const [mins, secs] = str.split(':').map(Number);
+        return (mins || 0) * 60 + (secs || 0);
+      }}
+      if (str.includes('s')) {{
+        return parseInt(str) || 0;
+      }}
+      return parseInt(str) || 0;
+    }}
+
     function highlightMovement(curSec) {{
       const isLast = (curIdx === CLASS_TRACKS.length - 1);
-      let timestamps = [];
+      let startTimes = [];
+      let movNames = [];
 
       if (isLast) {{
-        // Dedicated stretch milestones: 0:00 (0s), 1:30 (90s), 2:45 (165s), 3:45 (225s), 4:45 (285s)
-        timestamps = [0, 90, 165, 225, 285];
+        startTimes = [0, 90, 165, 225, 285];
+        movNames = ['Chest & Shoulders', 'Hamstring Stretch', 'Quadriceps Stretch', 'Calf & Achilles', 'Full Body Release'];
       }} else {{
         const t = CLASS_TRACKS[curIdx];
         if (!t || !t.movements) return;
@@ -707,30 +975,73 @@ def generate_embedded_html(class_data):
         const validMovs = (t.movements || []).filter(m => m && m.name);
         if (validMovs.length === 0) return;
 
-        timestamps = validMovs.map(m => {{
-          if (!m.time) return 0;
-          if (m.time.includes(':')) {{
-            const [mins, secs] = m.time.split(':').map(Number);
-            return (mins || 0) * 60 + (secs || 0);
-          }}
-          return parseInt(m.time) || 0;
-        }});
+        startTimes = validMovs.map(m => parseTimestampSecs(m.time));
+        movNames = validMovs.map(m => m.name);
       }}
 
-      // Find the active card whose start timestamp <= curSec
       let activeIdx = 0;
-      for (let i = 0; i < timestamps.length; i++) {{
-        if (curSec >= timestamps[i]) {{
+      for (let i = 0; i < startTimes.length; i++) {{
+        if (curSec >= startTimes[i]) {{
           activeIdx = i;
         }} else {{
           break;
         }}
       }}
 
+      if (activeIdx !== prevActiveMovIdx && prevActiveMovIdx !== -1) {{
+        playCountdownBeep(true);
+      }}
+      prevActiveMovIdx = activeIdx;
+
+      let flashIdx = -1;
+      let nextIndex = activeIdx + 1;
+
+      const bannerCurrent = document.getElementById('movBannerCurrent');
+      const bannerNext = document.getElementById('movBannerNext');
+      const banner = document.getElementById('movBanner');
+
+      if (movNames[activeIdx] && bannerCurrent) {{
+        bannerCurrent.textContent = '⚡ CURRENT: ' + movNames[activeIdx];
+      }}
+
+      if (nextIndex < startTimes.length) {{
+        const timeUntilNext = startTimes[nextIndex] - curSec;
+        if (timeUntilNext <= 10 && timeUntilNext > 0) {{
+          flashIdx = nextIndex;
+          const secLeft = Math.ceil(timeUntilNext);
+          if (bannerNext) {{
+            bannerNext.textContent = '▶ NEXT IN ' + secLeft + 's: ' + movNames[nextIndex] + ' ⚡';
+            bannerNext.style.display = 'inline';
+          }}
+          if (banner) banner.classList.add('warning-flash');
+
+          if (secLeft <= 3 && secLeft !== lastBeepSec) {{
+            lastBeepSec = secLeft;
+            playCountdownBeep(false);
+          }}
+        }} else {{
+          if (bannerNext) bannerNext.style.display = 'none';
+          if (banner) banner.classList.remove('warning-flash');
+          lastBeepSec = -1;
+        }}
+      }} else {{
+        if (bannerNext) bannerNext.style.display = 'none';
+        if (banner) banner.classList.remove('warning-flash');
+        lastBeepSec = -1;
+      }}
+
       const cards = document.querySelectorAll('.mov-card');
       cards.forEach((c, idx) => {{
-        if (idx === activeIdx) c.classList.add('mov-active');
-        else c.classList.remove('mov-active');
+        if (idx === activeIdx) {{
+          c.classList.add('mov-active');
+          c.classList.remove('mov-upcoming-flash');
+        }} else if (idx === flashIdx) {{
+          c.classList.remove('mov-active');
+          c.classList.add('mov-upcoming-flash');
+        }} else {{
+          c.classList.remove('mov-active');
+          c.classList.remove('mov-upcoming-flash');
+        }}
       }});
     }}
 
@@ -748,6 +1059,64 @@ def add_cors_headers(response):
     response.headers['Access-Control-Expose-Headers'] = 'Content-Range, Content-Length, Accept-Ranges, Content-Disposition'
     response.headers['Accept-Ranges'] = 'bytes'
     return response
+
+SAVED_TRACKS_FILE = os.path.join(PROJECT_DIR, "saved_tracks_library.json")
+
+def load_saved_tracks():
+    if os.path.exists(SAVED_TRACKS_FILE):
+        try:
+            with open(SAVED_TRACKS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print("Error reading saved tracks file:", e)
+    return {}
+
+def save_saved_tracks(tracks_dict):
+    try:
+        with open(SAVED_TRACKS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(tracks_dict, f, indent=2)
+        return True
+    except Exception as e:
+        print("Error writing saved tracks file:", e)
+        return False
+
+@app.route('/api/tracks/library', methods=['GET', 'OPTIONS'])
+def get_saved_tracks():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'})
+    library = load_saved_tracks()
+    return jsonify({'success': True, 'tracks': library})
+
+@app.route('/api/tracks/save', methods=['POST', 'OPTIONS'])
+def save_track_preset():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'})
+    data = request.get_json(silent=True) or {}
+    track = data.get('track')
+    if not track or not track.get('name'):
+        return jsonify({'error': 'Invalid track payload'}), 400
+
+    library = load_saved_tracks()
+    key = track.get('name')
+    library[key] = track
+    save_saved_tracks(library)
+    return jsonify({'success': True, 'message': f"Saved '{track.get('name')}' to library", 'key': key})
+
+@app.route('/api/tracks/delete', methods=['POST', 'OPTIONS'])
+def delete_track_preset():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'})
+    data = request.get_json(silent=True) or {}
+    key = data.get('key') or data.get('name')
+    if not key:
+        return jsonify({'error': 'Missing track key'}), 400
+
+    library = load_saved_tracks()
+    if key in library:
+        del library[key]
+        save_saved_tracks(library)
+        return jsonify({'success': True, 'message': f"Deleted '{key}' from library"})
+    return jsonify({'error': 'Track key not found'}), 404
 
 @app.route('/')
 def index():

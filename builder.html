@@ -905,6 +905,9 @@
         <button class="btn btn-import-mb" onclick="openMusicBeeModal()" title="Import a class playlist (.m3u, .mbp, etc.)">
           🎵 Import Playlist
         </button>
+        <button class="btn btn-saved-library" onclick="openSavedTracksModal()" title="View and load pre-engineered saved tracks" style="background:rgba(255, 145, 0, 0.2); border:1px solid #ff9100; color:#fff;">
+          ⭐ Track Library
+        </button>
         <button class="btn btn-saved-library" onclick="openSavedClassesModal()" title="View and open your saved classes library">
           📂 My Classes
         </button>
@@ -979,12 +982,14 @@
       </div>
 
       <!-- Track-By-Track Builder Section Header -->
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
         <div style="font-family:'Outfit',sans-serif; font-size:1.15rem; font-weight:800; color:#fff;">
           🛠️ Track Builder & Movement Transitions (Up to 6 per Track)
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="btn btn-outline btn-sm" onclick="resetToSample()">🔄 Reset to Spin001 Sample</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--accent-orange); border-color:var(--accent-orange);" onclick="openSavedTracksModal()">⭐ Saved Tracks Library</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--accent-cyan); border-color:var(--accent-cyan);" onclick="addNewTrackToClass()">➕ Add Track</button>
+          <button class="btn btn-outline btn-sm" onclick="resetToSample()">🔄 Reset Sample</button>
         </div>
       </div>
 
@@ -1043,6 +1048,31 @@
         <button class="btn btn-outline btn-sm" onclick="closeSymbolModal()">✕</button>
       </div>
       <div class="symbols-picker-grid" id="symbolPickerGrid"></div>
+    </div>
+  </div>
+
+  <!-- Saved Tracks Library Modal -->
+  <div class="modal-overlay" id="savedTracksModal" onclick="closeSavedTracksModal(event)">
+    <div class="modal-card" style="max-width:850px;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-family:'Outfit',sans-serif; font-size:1.3rem; font-weight:800; color:#fff;">⭐ Saved Tracks Library</div>
+        <button class="btn btn-outline btn-sm" onclick="closeSavedTracksModal()">✕</button>
+      </div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+        Pre-engineered track presets saved with all their BPM, cadence, energy zone, movement transitions & coaching cues. Insert any saved track into your current class with 1 click!
+      </p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+        <input type="text" id="trackSearchInput" class="cues-input" style="max-width:320px; font-size:0.85rem; padding:6px 10px;" placeholder="🔍 Search saved tracks..." oninput="filterSavedTracksList()" />
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="exportSavedTracksLibraryBackup()">💾 Export Tracks JSON</button>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer; margin:0;">
+            📂 Import Tracks <input type="file" accept=".json" style="display:none;" onchange="importSavedTracksLibraryFile(event)" />
+          </label>
+        </div>
+      </div>
+      <div class="modal-body-scroll" id="savedTracksListContainer" style="max-height:480px;">
+        <!-- Injected by JS -->
+      </div>
     </div>
   </div>
 
@@ -1465,6 +1495,7 @@
               '</select>' +
             '</div>' +
             '<div class="track-actions">' +
+              '<button class="icon-btn" onclick="saveSingleTrackToLibrary(' + tIdx + ')" title="⭐ Save Track to Track Library" style="color:var(--accent-orange); font-weight:800; font-size:1.05rem;">⭐</button>' +
               '<button class="icon-btn" onclick="triggerReplaceTrackFile(' + tIdx + ')" title="🔄 Replace Track Song & Audio" style="color:var(--accent-cyan); font-weight:800; font-size:1.05rem;">🔄</button>' +
               '<button class="icon-btn" onclick="moveTrack(' + tIdx + ', -1)" title="Move Up">▲</button>' +
               '<button class="icon-btn" onclick="moveTrack(' + tIdx + ', 1)" title="Move Down">▼</button>' +
@@ -1915,6 +1946,255 @@
         toast.style.display = 'block';
         setTimeout(() => { toast.style.display = 'none'; }, 2500);
       }
+    }
+
+    // Saved Tracks Library Management
+    function openSavedTracksModal() {
+      syncSavedTracksWithServer();
+      document.getElementById('savedTracksModal').classList.add('active');
+      renderSavedTracksList();
+    }
+
+    function closeSavedTracksModal(e) {
+      if (e && e.target && e.target.id !== 'savedTracksModal' && !e.target.classList.contains('btn-outline')) return;
+      document.getElementById('savedTracksModal').classList.remove('active');
+    }
+
+    function getSavedTracksLibrary() {
+      let lib = {};
+      try {
+        const raw = localStorage.getItem('spinning_saved_tracks_library');
+        if (raw) lib = JSON.parse(raw);
+      } catch(e) {}
+
+      if (Object.keys(lib).length === 0 && typeof DEFAULT_DATA !== 'undefined' && DEFAULT_DATA.tracks) {
+        DEFAULT_DATA.tracks.forEach(trk => {
+          if (trk && trk.name) {
+            lib[trk.name] = JSON.parse(JSON.stringify(trk));
+            lib[trk.name].savedAt = 'Sample Track Preset';
+          }
+        });
+        saveSavedTracksLibrary(lib);
+      }
+
+      return lib;
+    }
+
+    function saveSavedTracksLibrary(lib) {
+      try {
+        localStorage.setItem('spinning_saved_tracks_library', JSON.stringify(lib));
+      } catch(e) {}
+    }
+
+    async function syncSavedTracksWithServer() {
+      try {
+        const resp = await fetch(API_BASE + '/api/tracks/library');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success && data.tracks) {
+            const localLib = getSavedTracksLibrary();
+            const merged = Object.assign({}, localLib, data.tracks);
+            saveSavedTracksLibrary(merged);
+          }
+        }
+      } catch(e) {}
+    }
+
+    async function saveSingleTrackToLibrary(tIdx) {
+      if (!classData || !classData.tracks || !classData.tracks[tIdx]) return;
+      const track = classData.tracks[tIdx];
+      const name = track.name ? track.name.trim() : ('Track ' + (tIdx + 1));
+      
+      const trackCopy = JSON.parse(JSON.stringify(track));
+      trackCopy.savedAt = new Date().toLocaleString();
+
+      const lib = getSavedTracksLibrary();
+      lib[name] = trackCopy;
+      saveSavedTracksLibrary(lib);
+
+      try {
+        await fetch(API_BASE + '/api/tracks/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track: trackCopy })
+        });
+      } catch(e) {}
+
+      showToast('⭐ Saved "' + name + '" to Track Library!');
+    }
+
+    function renderSavedTracksList(filterQuery = '') {
+      const container = document.getElementById('savedTracksListContainer');
+      if (!container) return;
+      
+      const lib = getSavedTracksLibrary();
+      container.innerHTML = '';
+
+      const keys = Object.keys(lib);
+      if (keys.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-dim); text-align:center; padding:30px; font-size:0.9rem;">' +
+          '⭐ No saved tracks in your library yet.<br><br>' +
+          'Set up any track with BPM, cadence, energy zone, movement intervals & cues, then click the <strong>⭐</strong> button on its card to save it here!' +
+          '</div>';
+        return;
+      }
+
+      const q = (filterQuery || '').toLowerCase().trim();
+
+      keys.forEach(key => {
+        const trk = lib[key];
+        if (!trk) return;
+
+        if (q && !trk.name.toLowerCase().includes(q) && !(trk.artist || '').toLowerCase().includes(q) && !(trk.zone || '').toLowerCase().includes(q) && !(trk.bpm || '').includes(q)) {
+          return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'saved-class-card';
+        card.style.flexDirection = 'column';
+        card.style.alignItems = 'stretch';
+        card.style.gap = '10px';
+
+        const zoneColor = ZONE_COLORS[trk.zone] || '#00e676';
+        let movBadges = '';
+        (trk.movements || []).forEach(m => {
+          if (m && m.name && SYMBOL_ICONS[m.name]) {
+            movBadges += '<span class="summary-mov-badge"><img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><span>' + m.name + (m.time ? ' (' + m.time + ')' : '') + '</span></span>';
+          }
+        });
+        if (!movBadges) movBadges = '<span style="color:var(--text-dim); font-size:0.75rem;">No movement intervals set</span>';
+
+        const safeKey = key.replace(/\\/g, '\\\\').replace(/\'/g, "\\'");
+
+        card.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">' +
+            '<div>' +
+              '<div class="saved-class-title" style="font-size:1.1rem; color:#fff;">🎵 ' + (trk.name || 'Untitled Track') + '</div>' +
+              '<div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">' + (trk.artist || 'Artist Unknown') + '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:6px;">' +
+              '<button class="btn btn-save btn-sm" onclick="insertSavedTrackIntoClass(\'' + safeKey + '\')">➕ Insert Track</button>' +
+              '<button class="btn btn-outline btn-sm" style="color:var(--accent-red);" onclick="deleteSavedTrackItem(\'' + safeKey + '\')">🗑️</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="saved-class-meta" style="gap:10px;">' +
+            '<span style="color:var(--accent-cyan); font-weight:700;">⚡ ' + (trk.bpm || '--') + ' BPM</span>' +
+            '<span style="color:#fff; font-weight:600;">🚴 ' + (trk.cadence || '--') + '</span>' +
+            '<span style="color:' + zoneColor + '; font-weight:700;">🔥 ' + (trk.zone || 'Endurance') + '</span>' +
+            '<span>⏱️ ' + (trk.duration || '05:00') + '</span>' +
+            '<span style="color:var(--accent-cyan); font-weight:800;">' + (trk.rpe || 'RPE 6') + '</span>' +
+            '<span style="color:var(--text-dim); margin-left:auto;">' + (trk.savedAt || '') + '</span>' +
+          '</div>' +
+          '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; background:rgba(0,0,0,0.2); padding:6px 10px; border-radius:8px;">' +
+            '<div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">WORKOUTS:</div>' +
+            movBadges +
+          '</div>' +
+          (trk.cues ? ('<div style="font-size:0.75rem; color:#e0f7fa; font-style:italic; background:rgba(0,229,255,0.06); padding:4px 8px; border-radius:6px; border-left:3px solid var(--accent-cyan);">' + trk.cues + '</div>') : '');
+
+        container.appendChild(card);
+      });
+    }
+
+    function filterSavedTracksList() {
+      const q = document.getElementById('trackSearchInput') ? document.getElementById('trackSearchInput').value : '';
+      renderSavedTracksList(q);
+    }
+
+    function insertSavedTrackIntoClass(key) {
+      const lib = getSavedTracksLibrary();
+      if (!lib[key]) {
+        alert('Saved track not found.');
+        return;
+      }
+
+      if (!classData.tracks) classData.tracks = [];
+      const trkCopy = JSON.parse(JSON.stringify(lib[key]));
+      trkCopy.id = 't' + (classData.tracks.length + 1);
+
+      classData.tracks.push(trkCopy);
+      renderTracks();
+      updateStats();
+      updateProfileCurve();
+      autoSave();
+      closeSavedTracksModal();
+      showToast('➕ Inserted track "' + trkCopy.name + '" into your class!');
+    }
+
+    async function deleteSavedTrackItem(key) {
+      if (confirm('Delete saved track "' + key + '" from your library?')) {
+        const lib = getSavedTracksLibrary();
+        delete lib[key];
+        saveSavedTracksLibrary(lib);
+
+        try {
+          await fetch(API_BASE + '/api/tracks/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key })
+          });
+        } catch(e) {}
+
+        renderSavedTracksList();
+        showToast('🗑️ Deleted saved track "' + key + '"');
+      }
+    }
+
+    function addNewTrackToClass() {
+      if (!classData.tracks) classData.tracks = [];
+      const newT = {
+        id: 't' + (classData.tracks.length + 1),
+        name: 'New Track ' + (classData.tracks.length + 1),
+        artist: 'Artist',
+        bpm: '128',
+        duration: '05:00',
+        cadence: '64 RPM (Climb)',
+        zone: 'Strength',
+        movements: [
+          { name: 'Seated Climb', time: '2:30' },
+          { name: 'Standing Climb', time: '2:30' },
+          null, null, null, null
+        ],
+        cues: '128 BPM > 110 -> Half-time cadence 64 RPM. Heavy climb in and out of saddle.'
+      };
+      classData.tracks.push(newT);
+      renderTracks();
+      updateStats();
+      updateProfileCurve();
+      autoSave();
+      showToast('➕ Added new track!');
+    }
+
+    function exportSavedTracksLibraryBackup() {
+      const lib = getSavedTracksLibrary();
+      const str = JSON.stringify(lib, null, 2);
+      const blob = new Blob([str], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Spinning_Saved_Tracks_Library.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('💾 Exported Saved Tracks Library!');
+    }
+
+    function importSavedTracksLibraryFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (parsed && typeof parsed === 'object') {
+            const current = getSavedTracksLibrary();
+            const merged = Object.assign({}, current, parsed);
+            saveSavedTracksLibrary(merged);
+            renderSavedTracksList();
+            showToast('✓ Imported tracks into library!');
+          }
+        } catch(err) {
+          alert('Error importing tracks library: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
     }
 
     function resetToSample() {

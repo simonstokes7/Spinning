@@ -300,6 +300,34 @@ mobile_html = f"""<!DOCTYPE html>
       color: #cbd5e1;
     }}
 
+    .mov-banner {{
+      width: 100%;
+      max-width: 620px;
+      background: rgba(0, 229, 255, 0.08);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-align: center;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }}
+    .mov-banner.warning-flash {{
+      background: rgba(255, 23, 68, 0.3) !important;
+      border-color: #ff1744 !important;
+      box-shadow: 0 0 20px rgba(255, 23, 68, 0.8) !important;
+      animation: bannerPulse 0.7s infinite ease-in-out;
+    }}
+    @keyframes bannerPulse {{
+      0%, 100% {{ opacity: 1; transform: scale(1.01); }}
+      50% {{ opacity: 0.85; transform: scale(1.0); }}
+    }}
+
     .movements-strip {{
       display: flex;
       gap: 8px;
@@ -329,6 +357,23 @@ mobile_html = f"""<!DOCTYPE html>
       background: rgba(0, 229, 255, 0.25) !important;
       box-shadow: 0 0 18px rgba(0, 229, 255, 0.9) !important;
       transform: scale(1.05);
+    }}
+    @keyframes movFlash {{
+      0%, 100% {{
+        border-color: #ffd700 !important;
+        background: rgba(255, 215, 0, 0.45) !important;
+        box-shadow: 0 0 22px rgba(255, 215, 0, 0.95) !important;
+        transform: scale(1.06);
+      }}
+      50% {{
+        border-color: #ff9100 !important;
+        background: rgba(255, 145, 0, 0.15) !important;
+        box-shadow: 0 0 6px rgba(255, 145, 0, 0.3) !important;
+        transform: scale(1.0);
+      }}
+    }}
+    .mov-upcoming-flash {{
+      animation: movFlash 0.75s infinite ease-in-out !important;
     }}
 
     .cues-box {{
@@ -410,22 +455,27 @@ mobile_html = f"""<!DOCTYPE html>
         <div class="song-artist" id="songArtist">DJ Stigma</div>
       </div>
 
+      <div class="mov-banner" id="movBanner">
+        <span id="movBannerCurrent">⚡ CURRENT: Seated Flat</span>
+        <span id="movBannerNext" style="color:var(--accent-orange); font-weight:800; display:none;">▶ NEXT IN 10s: Standing Climb ⚡</span>
+      </div>
+
       <div class="metrics-row">
         <div class="metric-box">
           <div class="metric-lbl">Track</div>
           <div class="metric-val" id="trackNumVal">1 / {len(sample_tracks)}</div>
         </div>
         <div class="metric-box">
+          <div class="metric-lbl">Target RPE</div>
+          <div class="metric-val" id="targetRpeVal" style="font-size:1.15rem; font-weight:800; color:#ff9100;">RPE 6</div>
+        </div>
+        <div class="metric-box">
           <div class="metric-lbl">Song BPM</div>
           <div class="metric-val" id="bpmVal" style="color:var(--accent-cyan)">118</div>
         </div>
-        <div class="metric-box">
+        <div class="metric-box cadence-highlight" id="cadenceBox">
           <div class="metric-lbl">Cadence</div>
           <div class="metric-val" id="cadenceVal" style="font-size:1.35rem; color:#fff;">59 RPM</div>
-        </div>
-        <div class="metric-box">
-          <div class="metric-lbl">Duration</div>
-          <div class="metric-val" id="durationVal">09:55</div>
         </div>
       </div>
 
@@ -471,6 +521,50 @@ mobile_html = f"""<!DOCTYPE html>
     let wakeLock = null;
     let blobUrls = {{}};
 
+    let audioCtx = null;
+    let soundEnabled = true;
+    let beepsEnabled = true;
+    let lastBeepSec = -1;
+    let prevActiveMovIdx = -1;
+
+    function initAudioContext() {{
+      if (!audioCtx) {{
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }}
+      if (audioCtx && audioCtx.state === 'suspended') {{
+        audioCtx.resume();
+      }}
+    }}
+
+    function playTone(freq, dur, type='sine', gainVal=0.15) {{
+      if (!soundEnabled) return;
+      try {{
+        initAudioContext();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      }} catch(e) {{}}
+    }}
+
+    function playCountdownBeep(isFinal=false) {{
+      if (!beepsEnabled || !soundEnabled) return;
+      if (isFinal) {{
+        playTone(1050, 0.1, 'sine', 0.25);
+        setTimeout(() => playTone(1400, 0.25, 'triangle', 0.3), 100);
+      }} else {{
+        playTone(780, 0.12, 'square', 0.2);
+      }}
+    }}
+
     function b64ToBlobUrl(b64Data) {{
       try {{
         const parts = b64Data.split(',');
@@ -490,6 +584,8 @@ mobile_html = f"""<!DOCTYPE html>
       audio = document.getElementById('audioEngine');
       audio.addEventListener('timeupdate', onTimeUpdate);
       audio.addEventListener('ended', onEnded);
+
+      document.addEventListener('click', () => {{ initAudioContext(); }}, {{ once: true }});
 
       let startX = 0;
       window.addEventListener('touchstart', (e) => {{ startX = e.changedTouches[0].screenX; }}, {{ passive: true }});
@@ -517,15 +613,21 @@ mobile_html = f"""<!DOCTYPE html>
 
     function loadTrack(idx, autoPlay = true) {{
       curIdx = idx;
+      prevActiveMovIdx = -1;
+      lastBeepSec = -1;
       const t = CLASS_TRACKS[curIdx];
       if (!t) return;
 
       document.getElementById('trackNumVal').textContent = (curIdx + 1) + ' / ' + CLASS_TRACKS.length;
       document.getElementById('songTitle').textContent = t.name;
       document.getElementById('songArtist').textContent = t.artist || '';
+      const rawRpe = String(t.rpe || t.target_rpe || 'RPE 6').trim();
+      const rpeDisplay = rawRpe.startsWith('RPE') ? rawRpe : ('RPE ' + rawRpe);
+      if (document.getElementById('targetRpeVal')) {{
+        document.getElementById('targetRpeVal').textContent = rpeDisplay;
+      }}
       document.getElementById('bpmVal').textContent = t.bpm || '--';
       document.getElementById('cadenceVal').textContent = t.cadence || '--';
-      document.getElementById('durationVal').textContent = t.duration || '05:00';
       document.getElementById('cuesBox').textContent = t.cues ? '"' + t.cues + '"' : '"Focus on smooth pedal cadence."';
 
       const zColor = ZONE_COLORS[t.zone] || '#00e676';
@@ -573,6 +675,7 @@ mobile_html = f"""<!DOCTYPE html>
     }}
 
     function togglePlay() {{
+      initAudioContext();
       if (audio.paused) {{
         audio.play().then(() => {{
           isPlaying = true;
@@ -633,36 +736,92 @@ mobile_html = f"""<!DOCTYPE html>
       audio.currentTime = pct * audio.duration;
     }}
 
+    function parseTimestampSecs(timeStr) {{
+      if (!timeStr) return 0;
+      let str = String(timeStr).trim().toLowerCase();
+      if (str.includes(':')) {{
+        const [mins, secs] = str.split(':').map(Number);
+        return (mins || 0) * 60 + (secs || 0);
+      }}
+      if (str.includes('s')) {{
+        return parseInt(str) || 0;
+      }}
+      return parseInt(str) || 0;
+    }}
+
     function highlightMovement(curSec) {{
       const t = CLASS_TRACKS[curIdx];
       if (!t || !t.movements) return;
 
-      let accum = 0;
-      let activeIdx = -1;
+      const validMovs = (t.movements || []).filter(m => m && m.name);
+      if (validMovs.length === 0) return;
 
-      for (let i = 0; i < t.movements.length; i++) {{
-        const m = t.movements[i];
-        if (!m || !m.name) continue;
-        let mDur = 60;
-        if (m.time) {{
-          if (m.time.includes(':')) {{
-            const [mins, secs] = m.time.split(':').map(Number);
-            mDur = (mins || 0) * 60 + (secs || 0);
-          }} else if (m.time.toLowerCase().includes('s')) {{
-            mDur = parseInt(m.time) || 30;
-          }}
-        }}
-        if (curSec >= accum && curSec < accum + mDur) {{
+      const startTimes = validMovs.map(m => parseTimestampSecs(m.time));
+      const movNames = validMovs.map(m => m.name);
+
+      let activeIdx = 0;
+      for (let i = 0; i < startTimes.length; i++) {{
+        if (curSec >= startTimes[i]) {{
           activeIdx = i;
+        }} else {{
           break;
         }}
-        accum += mDur;
+      }}
+
+      if (activeIdx !== prevActiveMovIdx && prevActiveMovIdx !== -1) {{
+        playCountdownBeep(true);
+      }}
+      prevActiveMovIdx = activeIdx;
+
+      let flashIdx = -1;
+      let nextIndex = activeIdx + 1;
+
+      const bannerCurrent = document.getElementById('movBannerCurrent');
+      const bannerNext = document.getElementById('movBannerNext');
+      const banner = document.getElementById('movBanner');
+
+      if (movNames[activeIdx] && bannerCurrent) {{
+        bannerCurrent.textContent = '⚡ CURRENT: ' + movNames[activeIdx];
+      }}
+
+      if (nextIndex < startTimes.length) {{
+        const timeUntilNext = startTimes[nextIndex] - curSec;
+        if (timeUntilNext <= 10 && timeUntilNext > 0) {{
+          flashIdx = nextIndex;
+          const secLeft = Math.ceil(timeUntilNext);
+          if (bannerNext) {{
+            bannerNext.textContent = '▶ NEXT IN ' + secLeft + 's: ' + movNames[nextIndex] + ' ⚡';
+            bannerNext.style.display = 'inline';
+          }}
+          if (banner) banner.classList.add('warning-flash');
+
+          if (secLeft <= 3 && secLeft !== lastBeepSec) {{
+            lastBeepSec = secLeft;
+            playCountdownBeep(false);
+          }}
+        }} else {{
+          if (bannerNext) bannerNext.style.display = 'none';
+          if (banner) banner.classList.remove('warning-flash');
+          lastBeepSec = -1;
+        }}
+      }} else {{
+        if (bannerNext) bannerNext.style.display = 'none';
+        if (banner) banner.classList.remove('warning-flash');
+        lastBeepSec = -1;
       }}
 
       const cards = document.querySelectorAll('.mov-card');
       cards.forEach((c, idx) => {{
-        if (idx === activeIdx) c.classList.add('mov-active');
-        else c.classList.remove('mov-active');
+        if (idx === activeIdx) {{
+          c.classList.add('mov-active');
+          c.classList.remove('mov-upcoming-flash');
+        }} else if (idx === flashIdx) {{
+          c.classList.remove('mov-active');
+          c.classList.add('mov-upcoming-flash');
+        }} else {{
+          c.classList.remove('mov-active');
+          c.classList.remove('mov-upcoming-flash');
+        }}
       }});
     }}
 
