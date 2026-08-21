@@ -443,7 +443,7 @@ mobile_html = f"""<!DOCTYPE html>
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 Spin 001 - High Energy Endurance <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.5.0</span></h1>
+        <h1>🚴 Spin 001 - High Energy Endurance <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.6.0</span></h1>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <label style="cursor:pointer; font-size:0.75rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:var(--accent-cyan); padding:4px 10px; border-radius:8px; font-weight:700;" title="Attach local MP3 music files from your phone or PC">

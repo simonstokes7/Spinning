@@ -876,7 +876,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.5.0</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.0</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
@@ -920,7 +920,7 @@
         <button class="btn btn-export" onclick="exportStandaloneWorkout()" title="Export single-screen workout with music for your phone">
           📲 Export for Phone
         </button>
-        <button class="btn btn-github" onclick="publishToGitHub()" title="Overwrite and send Latest Spin Class directly to GitHub">
+        <button class="btn btn-github" id="githubSendBtn" onclick="publishToGitHub()" title="Overwrite and send Latest Spin Class directly to GitHub">
           🐙 Send to GitHub
         </button>
         <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
@@ -1325,6 +1325,11 @@
       if (document.getElementById('instructorName')) document.getElementById('instructorName').value = classData.instructor || '';
       if (document.getElementById('classEnergyZone')) document.getElementById('classEnergyZone').value = classData.energyZone || 'Strength';
       if (document.getElementById('targetDuration')) document.getElementById('targetDuration').value = classData.targetDuration || '45';
+
+      if (window.location.hostname.includes('github.io')) {
+        const ghBtn = document.getElementById('githubSendBtn');
+        if (ghBtn) ghBtn.style.display = 'none';
+      }
 
       buildSymbolPicker();
       renderTracks();
