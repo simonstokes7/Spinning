@@ -445,7 +445,12 @@ mobile_html = f"""<!DOCTYPE html>
       <div class="title-group">
         <h1>🚴 Spin 001 - High Energy Endurance</h1>
       </div>
-      <div class="clock-pill" id="liveClock">00:00</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="cursor:pointer; font-size:0.75rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:var(--accent-cyan); padding:4px 10px; border-radius:8px; font-weight:700;" title="Attach local MP3 music files from your phone or PC">
+          🎵 Load MP3s <input type="file" multiple accept="audio/*,.mp3,.m4a" style="display:none;" onchange="handleCockpitAudioUpload(event)" />
+        </label>
+        <div class="clock-pill" id="liveClock">00:00</div>
+      </div>
     </header>
 
     <div class="cockpit">
@@ -648,7 +653,9 @@ mobile_html = f"""<!DOCTYPE html>
         }}
       }});
 
-      if (t.audioBase64) {{
+      if (t.audioUrl) {{
+        audio.src = t.audioUrl;
+      }} else if (t.audioBase64) {{
         if (!blobUrls[curIdx]) {{
           blobUrls[curIdx] = b64ToBlobUrl(t.audioBase64);
         }}
@@ -663,30 +670,121 @@ mobile_html = f"""<!DOCTYPE html>
       document.getElementById('statusDisplay').textContent = 'Ready';
 
       if (autoPlay) {{
-        audio.play().then(() => {{
-          isPlaying = true;
-          document.getElementById('playBtn').textContent = '⏸ Pause';
-          document.getElementById('statusDisplay').textContent = 'Playing';
-        }}).catch(e => console.log('Playback error:', e));
+        togglePlay();
       }} else {{
         isPlaying = false;
+        stopSynthMetronome();
+        stopSynthTimer();
         document.getElementById('playBtn').textContent = '▶ Play Workout';
       }}
     }}
 
+    let synthInterval = null;
+    let synthTimerInterval = null;
+    let synthStartTime = 0;
+
+    function startSynthMetronome(bpmVal) {{
+      stopSynthMetronome();
+      const bpm = parseInt(bpmVal) || 120;
+      const intervalMs = (60 / bpm) * 1000;
+      
+      synthInterval = setInterval(() => {{
+        if (!isPlaying) return;
+        try {{
+          initAudioContext();
+          if (!audioCtx) return;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.08);
+        }} catch(e) {{}}
+      }}, intervalMs);
+    }}
+
+    function stopSynthMetronome() {{
+      if (synthInterval) {{
+        clearInterval(synthInterval);
+        synthInterval = null;
+      }}
+    }}
+
+    function startSynthTimer() {{
+      stopSynthTimer();
+      synthStartTime = Date.now();
+      synthTimerInterval = setInterval(() => {{
+        if (!isPlaying) return;
+        if (audio && !audio.paused && audio.currentTime > 0) return;
+        
+        const elapsedSecs = (Date.now() - synthStartTime) / 1000;
+        const t = CLASS_TRACKS[curIdx];
+        const durSecs = parseTimestampSecs(t ? t.duration : '05:00') || 300;
+        
+        const pct = Math.min(100, (elapsedSecs / durSecs) * 100);
+        document.getElementById('progressFill').style.width = pct + '%';
+
+        const curM = Math.floor(elapsedSecs / 60);
+        const curS = Math.floor(elapsedSecs % 60);
+        const rem = Math.max(0, durSecs - elapsedSecs);
+        const remM = Math.floor(rem / 60);
+        const remS = Math.floor(rem % 60);
+
+        document.getElementById('curTimeDisplay').textContent = curM + ':' + (curS < 10 ? '0' : '') + curS;
+        document.getElementById('remTimeDisplay').textContent = '-' + remM + ':' + (remS < 10 ? '0' : '') + remS;
+
+        highlightMovement(elapsedSecs);
+
+        if (elapsedSecs >= durSecs) {{
+          nextTrack();
+        }}
+      }}, 200);
+    }}
+
+    function stopSynthTimer() {{
+      if (synthTimerInterval) {{
+        clearInterval(synthTimerInterval);
+        synthTimerInterval = null;
+      }}
+    }}
+
+    function handleCockpitAudioUpload(e) {{
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+      files.forEach((file, idx) => {{
+        if (CLASS_TRACKS[idx]) {{
+          CLASS_TRACKS[idx].audioUrl = URL.createObjectURL(file);
+        }}
+      }});
+      loadTrack(curIdx, false);
+    }}
+
     function togglePlay() {{
       initAudioContext();
-      if (audio.paused) {{
+      if (!isPlaying) {{
         audio.play().then(() => {{
           isPlaying = true;
+          stopSynthMetronome();
+          stopSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
-          document.getElementById('statusDisplay').textContent = 'Playing';
+          document.getElementById('statusDisplay').textContent = 'Playing Music';
         }}).catch(e => {{
-          console.log('Play failed:', e);
-          document.getElementById('statusDisplay').textContent = 'Tap to retry';
+          console.log('MP3 unavail, starting Metronome beat mode:', e);
+          isPlaying = true;
+          const trk = CLASS_TRACKS[curIdx];
+          startSynthMetronome(trk ? trk.bpm : 120);
+          startSynthTimer();
+          document.getElementById('playBtn').textContent = '⏸ Pause';
+          document.getElementById('statusDisplay').textContent = 'Playing (Metronome ' + (trk ? trk.bpm : 120) + ' BPM)';
         }});
       }} else {{
         audio.pause();
+        stopSynthMetronome();
+        stopSynthTimer();
         isPlaying = false;
         document.getElementById('playBtn').textContent = '▶ Play Workout';
         document.getElementById('statusDisplay').textContent = 'Paused';
