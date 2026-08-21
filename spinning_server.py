@@ -466,7 +466,7 @@ def generate_embedded_html(class_data):
   <div class="screen-container">
     <header>
       <div class="title-group">
-        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.2</span></h1>
+        <h1>🚴 {workout_title} <span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:10px; border:1px solid rgba(0,229,255,0.3); vertical-align:middle; margin-left:8px; font-weight:700;">v3.8.3</span></h1>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <div class="clock-pill" id="totalClassTimer" style="background:rgba(0,229,255,0.15); border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif;" title="Total Workout Elapsed / Total Class Time">
@@ -809,20 +809,26 @@ def generate_embedded_html(class_data):
         }});
       }} else {{
         (t.movements || []).forEach(m => {{
-          if (m && m.name && SYMBOL_ICONS[m.name]) {{
+          if (m && m.name && String(m.name).trim() !== '') {{
             const card = document.createElement('div');
             card.className = 'mov-card';
-            card.innerHTML = '<img src="' + SYMBOL_ICONS[m.name] + '" alt="' + m.name + '"><div style="text-align:left;"><div style="font-weight:800; font-size:1.05rem; color:#fff;">' + m.name + '</div><div style="color:var(--accent-cyan); font-weight:800; font-family:Outfit,sans-serif; font-size:0.95rem;">' + (m.time || '') + '</div></div>';
+            const iconSrc = SYMBOL_ICONS[m.name] || SYMBOL_ICONS[m.name.trim()] || '';
+            const imgHtml = iconSrc ? '<img src="' + iconSrc + '" alt="' + m.name + '" />' : '<div style="font-size:1.4rem; min-width:34px; text-align:center; filter:drop-shadow(0 0 6px rgba(0,229,255,0.4));">🚴</div>';
+            card.innerHTML = imgHtml + '<div style="text-align:left;"><div style="font-weight:800; font-size:1.05rem; color:#fff;">' + m.name + '</div><div style="color:var(--accent-cyan); font-weight:800; font-family:Outfit,sans-serif; font-size:0.95rem;">' + (m.time || '') + '</div></div>';
             strip.appendChild(card);
           }}
         }});
       }}
 
-      if (t.audioBase64) {{
+      if (t.audioUrl) {{
+        audio.src = t.audioUrl;
+      }} else if (t.audioBase64) {{
         if (!blobUrls[curIdx]) {{
           blobUrls[curIdx] = b64ToBlobUrl(t.audioBase64);
         }}
         audio.src = blobUrls[curIdx];
+      }} else if (t.filePath) {{
+        audio.src = API_BASE + '/api/audio/stream?path=' + encodeURIComponent(t.filePath);
       }} else {{
         audio.src = 'audio/track' + (curIdx + 1) + '.mp3';
       }}
@@ -894,6 +900,7 @@ def generate_embedded_html(class_data):
           document.getElementById('cadenceBox').classList.add('pulse-ring');
         }}).catch(e => {{
           console.log('MP3 unavail, starting Workout Timer mode:', e);
+          try {{ audio.pause(); audio.src = ''; }} catch(err) {{}}
           isPlaying = true;
           startSynthTimer();
           document.getElementById('playBtn').textContent = '⏸ Pause';
