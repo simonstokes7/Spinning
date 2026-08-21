@@ -879,7 +879,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.1</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.2</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
@@ -2745,13 +2745,38 @@
       }
     }
 
-    function exportStandaloneWorkout() {
+    async function exportStandaloneWorkout() {
       autoSave();
-      showToast('⏳ Baking MP3 music into standalone phone file (~85MB)... Please wait a few seconds.');
+      showToast('⏳ Baking workout file for your phone... Please wait a moment.');
       
       const safeTitle = (classData.title || 'Spinning_Workout').replace(/[^a-z0-9_-]/gi, '_');
-      
-      // Submit via hidden form to guarantee 100% native browser download without any file:/// sandbox blocks
+      const targetUrl = 'http://127.0.0.1:8080/api/workout/export-embedded';
+
+      try {
+        const resp = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ classData: classData })
+        });
+
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const downloadUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = safeTitle + '_Workout.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(downloadUrl);
+          showToast('🎉 Standalone workout file downloaded!');
+          return;
+        }
+      } catch (err) {
+        console.warn('Direct fetch failed, attempting form submit fallback:', err);
+      }
+
+      // Hidden form fallback
       let form = document.getElementById('exportEmbeddedForm');
       if (!form) {
         form = document.createElement('form');
@@ -2764,12 +2789,12 @@
         form.appendChild(input);
         document.body.appendChild(form);
       }
-      form.action = (window.location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8080') + '/api/workout/export-embedded';
+      form.action = 'http://127.0.0.1:8080/api/workout/export-embedded';
       form.querySelector('input[name="payload"]').value = JSON.stringify({ classData: classData });
       form.submit();
       
       setTimeout(() => {
-        showToast('🎉 Standalone workout (~85MB) downloaded with all music!');
+        showToast('🎉 Workout file export submitted!');
       }, 3500);
     }
 
