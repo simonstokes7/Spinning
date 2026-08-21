@@ -876,7 +876,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.4.0</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.5.0</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
@@ -2678,10 +2678,15 @@
     // Export Standalone Workout for Phone
     async function publishToGitHub() {
       autoSave();
-      showToast('⏳ Overwriting & Baking "Latest Spin Class" for GitHub...');
+      showToast('⏳ Connecting to Spinning Server to publish to GitHub...');
+
+      let baseUrl = API_BASE;
+      if (window.location.hostname.includes('github.io')) {
+        baseUrl = 'http://127.0.0.1:8080';
+      }
 
       try {
-        const targetUrl = API_BASE + '/api/github/publish';
+        const targetUrl = baseUrl + '/api/github/publish';
         const resp = await fetch(targetUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2689,7 +2694,7 @@
         });
 
         if (!resp.ok) {
-          throw new Error('Local server not reachable at ' + targetUrl + ' (HTTP ' + resp.status + ')');
+          throw new Error('Server returned HTTP ' + resp.status);
         }
 
         const result = await resp.json();
@@ -2700,7 +2705,7 @@
           const pollInterval = setInterval(async () => {
             checks++;
             try {
-              const stRes = await fetch(API_BASE + '/api/github/status');
+              const stRes = await fetch(baseUrl + '/api/github/status');
               if (stRes.ok) {
                 const st = await stRes.json();
                 if (st.status === 'success') {
@@ -2720,7 +2725,15 @@
           alert('GitHub notice: ' + (result.error || 'Check server status'));
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        if (window.location.hostname.includes('github.io')) {
+          alert("💡 Note: The 'Send to GitHub' button publishes directly via your local Python server (http://localhost:8080).\n\n" +
+                "Since you are currently viewing the hosted site on github.io, your local Python server isn't connected.\n\n" +
+                "To save & use your workout:\n" +
+                "1. Click '💾 Save Class' to keep your edits in browser storage.\n" +
+                "2. Click '📲 Export for Phone' to download the workout file directly to your device!");
+        } else {
+          alert('Local server error: ' + err.message + '\n\nPlease ensure spinning_server.py is running on http://localhost:8080.');
+        }
       }
     }
 

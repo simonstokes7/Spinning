@@ -5,13 +5,9 @@
 *.avi
 *.mkv
 
-# Large Audio Files
-*.mp3
-*.wav
-*.flac
-*.aac
-*.ogg
-audio/
+# Large Audio Files (Allow sample tracks in audio/ directory for GitHub Pages playback)
+!audio/
+!audio/*.mp3
 
 # Personal / Receipt / Course PDF Documents
 *.pdf
