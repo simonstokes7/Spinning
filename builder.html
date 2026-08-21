@@ -478,12 +478,12 @@
 
     .track-main-row {
       display: grid;
-      grid-template-columns: 44px 1.4fr 75px 75px 125px 125px 135px 80px;
+      grid-template-columns: 40px 1.3fr 75px 75px 130px 135px 145px auto;
       gap: 10px;
       align-items: center;
       margin-bottom: 12px;
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 1100px) {
       .track-main-row { grid-template-columns: 1fr 1fr; }
     }
 
@@ -718,6 +718,9 @@
       display: flex;
       gap: 4px;
       justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .icon-btn {
       background: rgba(255, 255, 255, 0.05);
@@ -876,7 +879,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.0</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.1</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
