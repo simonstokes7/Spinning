@@ -92,7 +92,7 @@ For each track in your workout:
 ### 🎧 Step 4: Listen to Music While Building
 - Click the **`▶ Play`** button directly on any track card to listen to the song while configuring your movement slots.
 - Watch the live time display (`01:24 / 05:30`) or click along the progress bar to seek.
-- Click **`⏱️ Use Timestamp`** at any time during playback to automatically copy the live audio timestamp into your next empty movement slot!
+- Click **`⏱️ Use Timestamp`** at any time during playback to automatically copy the live audio timestamp directly into whichever movement slot your cursor is focused on (or the next empty slot if no slot is focused)!
 
 ---
 

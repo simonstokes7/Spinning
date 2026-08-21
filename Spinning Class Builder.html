@@ -879,7 +879,7 @@
       <div class="logo-group">
         <div class="logo-badge">SP</div>
         <div class="title-group">
-          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.6.3</span></h1>
+          <h1>Spinning® Class Builder <span style="font-size:0.75rem; background:rgba(0,229,255,0.15); color:var(--accent-cyan); padding:2px 8px; border-radius:12px; border:1px solid var(--accent-cyan); font-weight:800; font-family:'Outfit',sans-serif; vertical-align:middle; margin-left:8px;">v3.7.0</span></h1>
           <p>Official Cadence & Profile Designer</p>
         </div>
       </div>
@@ -1298,6 +1298,7 @@
 
     let classData = JSON.parse(JSON.stringify(DEFAULT_DATA));
     let activeModalTarget = null;
+    let lastFocusedSlot = null;
     const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'http://127.0.0.1:8080';
 
     function init() {
@@ -1447,7 +1448,7 @@
               '<div class="slot-details">' +
                 '<div class="slot-symbol-name">' + mov.name + '</div>' +
                 '<div class="slot-time-wrapper" onclick="event.stopPropagation()">' +
-                  '<input type="text" class="slot-time-input" value="' + (mov.time || '') + '" placeholder="Time (e.g. 2:00)" oninput="updateSlotTime(' + tIdx + ', ' + sIdx + ', this.value)" title="Click to edit movement time" />' +
+                  '<input type="text" class="slot-time-input" id="slotTimeInput_' + tIdx + '_' + sIdx + '" value="' + (mov.time || '') + '" placeholder="Time (e.g. 2:00)" onfocus="lastFocusedSlot = { tIdx: ' + tIdx + ', sIdx: ' + sIdx + ' }" oninput="updateSlotTime(' + tIdx + ', ' + sIdx + ', this.value)" title="Click to edit movement time" />' +
                 '</div>' +
               '</div>' +
               '<button class="slot-clear-btn" onclick="event.stopPropagation(); clearSlot(' + tIdx + ', ' + sIdx + ')">✕</button>' +
@@ -2338,14 +2339,19 @@
 
       if (!track.movements) track.movements = [null, null, null, null, null, null];
       let targetSlot = -1;
-      for (let i = 0; i < 6; i++) {
-        const m = track.movements[i];
-        if (m && m.name && (!m.time || String(m.time).trim() === '')) {
-          targetSlot = i;
-          break;
-        } else if (!m) {
-          targetSlot = i;
-          break;
+
+      if (lastFocusedSlot && lastFocusedSlot.tIdx === tIdx && lastFocusedSlot.sIdx >= 0 && lastFocusedSlot.sIdx < 6) {
+        targetSlot = lastFocusedSlot.sIdx;
+      } else {
+        for (let i = 0; i < 6; i++) {
+          const m = track.movements[i];
+          if (m && m.name && (!m.time || String(m.time).trim() === '')) {
+            targetSlot = i;
+            break;
+          } else if (!m) {
+            targetSlot = i;
+            break;
+          }
         }
       }
 
@@ -2355,9 +2361,17 @@
         } else {
           track.movements[targetSlot].time = timeStr;
         }
+        const focusedSIdx = targetSlot;
+        lastFocusedSlot = { tIdx: tIdx, sIdx: targetSlot };
+
         renderTracks();
         autoSave();
         showToast('⏱️ Inserted timestamp ' + timeStr + ' into Slot ' + (targetSlot + 1) + '!');
+
+        setTimeout(() => {
+          const inputEl = document.getElementById('slotTimeInput_' + tIdx + '_' + focusedSIdx);
+          if (inputEl) inputEl.focus();
+        }, 50);
       } else {
         showToast('⏱️ Live audio time: ' + timeStr);
       }
