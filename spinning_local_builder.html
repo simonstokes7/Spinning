@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Local Course Designer</title>
+  <title>Spinning® Local Class Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1285,7 +1285,7 @@
       <div class="header-row-1" style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:12px; flex-wrap:wrap;">
         <div class="logo-group" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <div class="logo-badge" style="width:34px; height:34px; font-size:1.1rem; border-radius:8px;">SP</div>
-          <h1 style="font-size:1.2rem; margin:0; color:#fff; display:flex; align-items:center; gap:8px; font-family:'Outfit',sans-serif; font-weight:800; white-space:nowrap;">Spinning® Local Course Designer <span class="version-badge" style="font-size:0.7rem; padding:1px 6px;">v5.0.44 Local (Local)</span></h1>
+          <h1 style="font-size:1.2rem; margin:0; color:#fff; display:flex; align-items:center; gap:8px; font-family:'Outfit',sans-serif; font-weight:800; white-space:nowrap;">Spinning® Local Class Builder <span class="version-badge" style="font-size:0.7rem; padding:1px 6px;">v5.0.48 Local (Local)</span></h1>
           <div style="display:flex; align-items:center; gap:6px; margin-left:6px;">
             <span style="font-size:0.65rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; white-space:nowrap;">📝 Profile Title:</span>
             <input type="text" id="classTitle" class="header-title-input" value="Spin 001 - High Energy Endurance"
@@ -1491,18 +1491,23 @@
             </div>
           </div>
 
-          <!-- Scrubber Row with 1-Tap Nudge Sync Controls -->
+          <!-- Scrubber Row with 1-Tap Nudge Sync Controls. Fixed-width
+               nowrap/ellipsis on every piece of text here (v5.0.47) — the
+               countdown text growing a digit (e.g. "-9:36" -> "-13:15")
+               used to be enough to push this row's total content past its
+               box width, wrapping the status text onto a second line and
+               visibly reflowing the whole HUD every second while playing. -->
           <div class="cockpit-hud-scrubber-row"
             style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
             <button onclick="nudgeCockpitTime(-5)"
-              style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff; font-size:0.75rem; font-weight:800; border-radius:6px; padding:2px 8px; cursor:pointer;"
-              title="Nudge HUD Back 5s">⏪ -5s</button>
-            <span id="cockpitTimeCur">0:00</span>
-            <span id="cockpitStatusText">Ready</span>
-            <span id="cockpitTimeRem">-09:36</span>
+              style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff; font-size:0.75rem; font-weight:800; border-radius:6px; padding:2px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0;"
+              title="Nudge HUD Back 5s">-5s</button>
+            <span id="cockpitTimeCur" style="white-space:nowrap; flex-shrink:0;">0:00</span>
+            <span id="cockpitStatusText" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; text-align:center;">Ready</span>
+            <span id="cockpitTimeRem" style="white-space:nowrap; flex-shrink:0;">-09:36</span>
             <button onclick="nudgeCockpitTime(5)"
-              style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff; font-size:0.75rem; font-weight:800; border-radius:6px; padding:2px 8px; cursor:pointer;"
-              title="Nudge HUD Forward 5s">⏩ +5s</button>
+              style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff; font-size:0.75rem; font-weight:800; border-radius:6px; padding:2px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0;"
+              title="Nudge HUD Forward 5s">+5s</button>
           </div>
           <div class="cockpit-hud-progress-bg" onclick="seekCockpitAudio(event)">
             <div class="cockpit-hud-progress-fill" id="cockpitProgressFill"></div>
@@ -1560,7 +1565,7 @@
            close, because the sole commit path was clicking a movement tile. -->
       <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px;">
         <button class="btn btn-outline btn-sm" onclick="closeSymbolModal()">Cancel</button>
-        <button class="btn btn-save btn-sm" onclick="applyModalSelection()"
+        <button class="btn btn-save btn-sm" id="applyToSlotBtn" onclick="applyModalSelection()"
           style="background:linear-gradient(135deg, var(--accent-cyan), #00b0ff); color:#000; font-weight:900; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(0,229,255,0.4);"
           title="Apply the selected Movement, Zone and RPE to this slot">✓ Apply to Slot</button>
       </div>
@@ -1986,6 +1991,20 @@
 
       audioPlayer.addEventListener('timeupdate', onAudioTimeUpdate);
       audioPlayer.addEventListener('ended', onAudioEnded);
+
+      // Bluetooth headset / lock-screen / car-stereo media controls via the
+      // Media Session API. Hooking the native 'play'/'pause' events (rather
+      // than every function that can start/stop audioPlayer) means this
+      // stays in sync no matter which code path changed playback state.
+      audioPlayer.addEventListener('play', () => {
+        const t = classTracks[playingAudioTrackIdx >= 0 ? playingAudioTrackIdx : activeCockpitTrackIdx];
+        updateMediaSessionMetadata(t);
+        if ('mediaSession' in navigator) { try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} }
+      });
+      audioPlayer.addEventListener('pause', () => {
+        if ('mediaSession' in navigator) { try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {} }
+      });
+      setupMediaSessionHandlers();
     }
 
     function loadEmbeddedSymbols() {
@@ -2200,7 +2219,7 @@
           const mZone = m.zone || track.zone;
           const rawRpe = (m && typeof m === 'object' && m.rpe) ? m.rpe : (ZONE_RPE_BADGES[mZone] || '');
           const cleanRpe = (rawRpe || '').replace(/\s*\(.*\)/, '').trim();
-          const slotColor = getRpeShadeColor(mZone, cleanRpe);
+          const slotColor = ZONE_COLORS[mZone] || zColor;
           const rpeHtml = cleanRpe ?
             '<div style="background:' + slotColor + '25; border:1px solid ' + slotColor + '; color:' + slotColor + '; font-size:0.78rem; font-weight:900; letter-spacing:0.5px; padding:1px 6px; border-radius:4px; margin:2px 0; display:inline-block; text-align:center; width:fit-content;">' + cleanRpe + '</div>' : '';
 
@@ -2259,9 +2278,9 @@
       parts.push('* { box-sizing:border-box; margin:0; padding:0; }\n');
       parts.push('html, body { background: #090c15; color: #fff; font-family: "Outfit", sans-serif; min-height: 100vh; width: 100vw; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; }\n');
       parts.push('.cockpit-hud-wrap { width: 100%; max-width: 480px; min-height: 100vh; background: #090c15; padding: 10px 12px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; margin: 0 auto; }\n');
-      parts.push('.cockpit-hud-topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 0.82rem; }\n');
+      parts.push('.cockpit-hud-topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; font-size: 0.88rem; }\n');
       parts.push('.cockpit-hud-classtitle { font-family: "Outfit", sans-serif; font-weight: 800; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60%; }\n');
-      parts.push('.cockpit-total-timer { background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.4); color: var(--accent-cyan); font-family: "Outfit", sans-serif; font-weight: 800; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; }\n');
+      parts.push('.cockpit-total-timer { background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.4); color: var(--accent-cyan); font-family: "Outfit", sans-serif; font-weight: 800; padding: 3px 10px; border-radius: 6px; }\n');
       parts.push('.cockpit-hud-tracktitle { font-family: "Outfit", sans-serif; font-size: 1.4rem; font-weight: 900; line-height: 1.15; color: #fff; text-align: center; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }\n');
       parts.push('.cockpit-hud-artist { font-size: 0.9rem; color: var(--text-muted); text-align: center; margin-top: 1px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }\n');
       parts.push('.cockpit-hud-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 100%; margin: 2px 0; }\n');
@@ -2313,6 +2332,13 @@
       parts.push('  function nudgeTime(delta) { const t = classTracks[activeIdx] || {}; const durSec = (audio && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : parseSec(t.duration); curSec = Math.max(0, Math.min(durSec, curSec + delta)); if (t.audioDataUrl && audio.src && !isNaN(audio.currentTime)) { try { audio.currentTime = curSec; } catch(err){} } render(); }\n');
       parts.push('  audio.addEventListener("timeupdate", () => { if (isPlaying && !isNaN(audio.currentTime)) { curSec = audio.currentTime; render(); } });\n');
       parts.push('  audio.addEventListener("ended", () => { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); render(); } });\n');
+      // Bluetooth / lock-screen media controls (Media Session API) for the
+      // standalone HUD — same pattern as the live builder's Cockpit tab.
+      parts.push('  const CLASS_TITLE = ' + JSON.stringify(title) + ';\n');
+      parts.push('  function updateMediaSessionMetadata(t) { if (!t || !("mediaSession" in navigator)) return; try { navigator.mediaSession.metadata = new MediaMetadata({ title: t.name || "Track", artist: t.artist || "", album: CLASS_TITLE }); } catch (e) {} }\n');
+      parts.push('  if ("mediaSession" in navigator) { try { navigator.mediaSession.setActionHandler("play", () => { if (audio.paused && audio.src) togglePlay(); }); navigator.mediaSession.setActionHandler("pause", () => { if (!audio.paused) togglePlay(); }); navigator.mediaSession.setActionHandler("previoustrack", () => prevTrack()); navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack()); } catch (e) {} }\n');
+      parts.push('  audio.addEventListener("play", () => { updateMediaSessionMetadata(classTracks[activeIdx]); if ("mediaSession" in navigator) { try { navigator.mediaSession.playbackState = "playing"; } catch (e) {} } });\n');
+      parts.push('  audio.addEventListener("pause", () => { if ("mediaSession" in navigator) { try { navigator.mediaSession.playbackState = "paused"; } catch (e) {} } });\n');
       parts.push('  function formatCountdown(sec) { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60); const s = sec % 60; return m > 0 ? (s > 0 ? (m + "m " + s + "s") : (m + "m")) : (s + "s"); }\n');
       parts.push('  function render() {\n');
       parts.push('    const t = classTracks[activeIdx] || {};\n');
@@ -2529,6 +2555,35 @@
       showToast((secDelta > 0 ? ('⏩ Nudge + ' + secDelta + 's') : ('⏪ Nudge - ' + Math.abs(secDelta) + 's')) + ' (Synced HUD!)');
     }
 
+    // Bluetooth / lock-screen media controls (Media Session API). Metadata
+    // is refreshed on every native 'play' event (see the audioPlayer
+    // listener in init()); handlers are registered once at startup.
+    function updateMediaSessionMetadata(track) {
+      if (!track || !('mediaSession' in navigator)) return;
+      try {
+        const classTitleEl = document.getElementById('classTitle');
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.name || 'Track',
+          artist: track.artist || '',
+          album: (classTitleEl ? classTitleEl.value : '') || 'Spinning Class'
+        });
+      } catch (e) { }
+    }
+
+    function setupMediaSessionHandlers() {
+      if (!('mediaSession' in navigator)) return;
+      try {
+        navigator.mediaSession.setActionHandler('play', () => {
+          if (audioPlayer && audioPlayer.paused && audioPlayer.src) audioPlayer.play().catch(() => { });
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          if (audioPlayer && !audioPlayer.paused) audioPlayer.pause();
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+      } catch (e) { }
+    }
+
     function toggleCockpitAudio() {
       let activeIdx = playingAudioTrackIdx >= 0 ? playingAudioTrackIdx : activeCockpitTrackIdx;
       const track = classTracks[activeIdx];
@@ -2643,17 +2698,17 @@
           const movName = mov ? (typeof mov === 'object' ? (mov.name || '') : mov) : '';
           const movTime = mov ? (typeof mov === 'object' ? (mov.time || '') : '') : '';
           const slotZone = (mov && typeof mov === 'object' && mov.zone) ? mov.zone : track.zone;
-          const slotColor = ZONE_COLORS[slotZone] || zoneColor;
 
           if (movName) {
             const iconSrc = SYMBOL_ICONS[movName] || '';
+            const slotColor = ZONE_COLORS[slotZone] || zoneColor;
+            const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
             const imgHtml = iconSrc ?
               '<div style="background:' + slotColor + '; width:38px; height:38px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);">' +
               '<img src="' + iconSrc + '" style="max-width:100%; max-height:100%; object-fit:contain;" alt="' + movName + '" />' +
               '</div>' :
               '<div class="slot-icon-placeholder" style="background:' + slotColor + '33; color:' + slotColor + ';">🚴</div>';
-            const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
-            const rpeBadge = rpeVal ? '<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin-top:2px; letter-spacing:0.3px;">' + rpeVal + '</div>' : '';
+            const rpeBadge = rpeVal ? '<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin:2px 0; letter-spacing:0.3px;">' + rpeVal + '</div>' : '';
             slotsHtml += '<div class="slot-box has-symbol" id="slotBox_' + tIdx + '_' + sIdx + '" onclick="openSymbolModal(' + tIdx + ', ' + sIdx + ')">' +
               '<button class="slot-clear-btn" onclick="event.stopPropagation(); clearSlot(' + tIdx + ', ' + sIdx + ')">✕</button>' +
               imgHtml +
@@ -3363,6 +3418,18 @@
         selectedModalRpe = ZONE_DEFAULT_RPE[zoneName] || 'RPE 5';
       }
 
+      // Symmetric with selectSymbol()'s auto-zone snap: a Movement that no
+      // longer fits the newly picked Zone is cleared rather than left as a
+      // stale, unpredictable mismatch (there's no single "default movement"
+      // per zone to auto-swap to, unlike Zone/RPE which do snap together).
+      if (selectedModalSymbol) {
+        const validZonesForMov = MOVEMENT_ALLOWED_ZONES[selectedModalSymbol] || [];
+        if (!validZonesForMov.includes(zoneName)) {
+          showToast('⚠️ "' + selectedModalSymbol + '" cleared — not valid for ' + zoneName + ' zone.');
+          selectedModalSymbol = '';
+        }
+      }
+
       updateModalUI();
     }
 
@@ -3410,6 +3477,40 @@
       const movAllowedRpes = MOVEMENT_ALLOWED_RPES[selectedModalSymbol] || null;
       const curNumRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 5;
 
+      // Some Movement+Zone combinations are dead ends by construction: the
+      // Zone's entire allowed-RPE set has zero overlap with the Movement's
+      // typical range (e.g. "Jumps" in Anaerobic Training, whose only valid
+      // RPE is 9, but Jumps tops out at 7). Hard-blocking there just traps
+      // the user — there is no "highlighted RPE" to switch to within this
+      // zone. Downgrade those to a neutral "grey" (allowed, not recommended)
+      // instead of the amber "pick a valid one" nudge, which stays reserved
+      // for cases where a genuinely valid RPE does exist in this zone.
+      const zoneHasNoValidRpeForMovement = !!movAllowedRpes && allowedRpes.length > 0 &&
+        !allowedRpes.some(r => movAllowedRpes.includes(r));
+
+      // Block Apply on a real broken rule: RPE must be valid for the selected
+      // Zone (else it's the fully "Disabled/Contradictory" state — can happen
+      // on modal open if a legacy slot's saved zone/RPE predates current
+      // rules) AND, only when a fixable alternative actually exists in this
+      // zone, valid for the selected Movement's typical exertion range.
+      const isZoneValidRpe = allowedRpes.includes(curNumRpe);
+      const isMovValidRpe = !movAllowedRpes || movAllowedRpes.includes(curNumRpe) || zoneHasNoValidRpeForMovement;
+      const isRuleBroken = !isZoneValidRpe || !isMovValidRpe;
+      const applyBtn = document.getElementById('applyToSlotBtn');
+      if (applyBtn) {
+        applyBtn.disabled = isRuleBroken;
+        applyBtn.style.opacity = isRuleBroken ? '0.35' : '1';
+        applyBtn.style.cursor = isRuleBroken ? 'not-allowed' : 'pointer';
+        applyBtn.style.boxShadow = isRuleBroken ? 'none' : '0 0 14px rgba(0,229,255,0.4)';
+        applyBtn.title = !isZoneValidRpe ?
+          ('RPE ' + curNumRpe + ' is not valid for the "' + selectedModalZone + '" zone — pick a highlighted RPE to apply.') :
+          (!movAllowedRpes || movAllowedRpes.includes(curNumRpe)) ?
+          'Apply the selected Movement, Zone and RPE to this slot' :
+          zoneHasNoValidRpeForMovement ?
+          ('⚠️ No RPE in "' + selectedModalZone + '" matches "' + selectedModalSymbol + '"\'s typical range — allowed, but not recommended.') :
+          ('RPE ' + curNumRpe + ' is outside "' + selectedModalSymbol + '"\'s typical range — pick a highlighted RPE to apply.');
+      }
+
       for (let r = 1; r <= 10; r++) {
         const btn = document.getElementById('modalRpeBtn_' + r);
         if (btn) {
@@ -3432,8 +3533,18 @@
             btn.style.boxShadow = 'none';
             btn.style.transform = 'scale(1.0)';
             btn.style.opacity = '0.85';
+          } else if (isZoneAllowed && !isMovAllowed && zoneHasNoValidRpeForMovement) {
+            // Zone/Movement pairing is a structural dead end (no RPE in this
+            // zone could ever satisfy the movement) — allowed, not recommended.
+            btn.style.border = '1px solid rgba(148,163,184,0.45)';
+            btn.style.background = 'rgba(148,163,184,0.08)';
+            btn.style.color = 'rgba(203,213,225,0.8)';
+            btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(0.97)';
+            btn.style.opacity = '0.65';
           } else if (isZoneAllowed && !isMovAllowed) {
-            // Valid for zone but outside movement's exertion range (amber advisory)
+            // Valid for zone but outside movement's exertion range (amber advisory) —
+            // a genuinely valid RPE exists elsewhere in this zone, so this stays blocked.
             btn.style.border = '1px solid rgba(255,145,0,0.5)';
             btn.style.background = 'rgba(255,145,0,0.07)';
             btn.style.color = 'rgba(255,200,100,0.85)';
@@ -3476,13 +3587,13 @@
             opt.style.transform = 'scale(1.02)';
             opt.innerHTML = img + '<div style="font-weight:800; color:#fff;">' + sym + '</div>' +
               '<div style="font-size:0.65rem; color:var(--accent-cyan); font-weight:800; margin-top:2px;">✓ Selected</div>';
-            opt.onclick = () => selectSymbol(sym);
+            opt.onclick = () => previewSymbol(sym);
           } else if (isMovementValid) {
             opt.style.opacity = '1.0';
             opt.style.border = '1px solid rgba(255,255,255,0.15)';
             opt.style.background = 'rgba(255,255,255,0.04)';
             opt.innerHTML = img + '<div style="font-weight:700; color:#fff;">' + sym + '</div>';
-            opt.onclick = () => selectSymbol(sym);
+            opt.onclick = () => previewSymbol(sym);
           } else {
             // Contradictory movement for current Zone (Auto-adjusts Zone on click)
             opt.style.opacity = '0.55';
@@ -3493,12 +3604,7 @@
             opt.innerHTML = img + '<div style="font-weight:700; color:#eee;">' + sym + '</div>' +
               '<div style="font-size:0.62rem; color:#ff9100; font-weight:800; margin-top:2px;">⚡ Auto-Zone: ' + recZone + '</div>';
 
-            opt.onclick = () => {
-              showToast('⚡ Auto-switched to ' + recZone + ' Zone for "' + sym + '"');
-              selectedModalZone = recZone;
-              selectedModalRpe = ZONE_DEFAULT_RPE[recZone] || 'RPE 5';
-              selectSymbol(sym);
-            };
+            opt.onclick = () => previewSymbol(sym);
           }
           grid.appendChild(opt);
         });
@@ -3561,17 +3667,17 @@
       const movName = mov ? (typeof mov === 'object' ? (mov.name || '') : mov) : '';
       const movTime = mov ? (typeof mov === 'object' ? (mov.time || '') : '') : '';
       const slotZone = (mov && typeof mov === 'object' && mov.zone) ? mov.zone : track.zone;
-      const slotColor = ZONE_COLORS[slotZone] || zoneColor;
 
       if (movName) {
         const iconSrc = SYMBOL_ICONS[movName] || '';
+        const slotColor = ZONE_COLORS[slotZone] || zoneColor;
+        const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
         const imgHtml = iconSrc ?
           ('<div style="background:' + slotColor + '; width:38px; height:38px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);">' +
             '<img src="' + iconSrc + '" style="max-width:100%; max-height:100%; object-fit:contain;" alt="' + movName + '" />' +
             '</div>') :
           ('<div class="slot-icon-placeholder" style="background:' + slotColor + '33; color:' + slotColor + ';">🚴</div>');
-        const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
-        const rpeBadge = rpeVal ? ('<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin-top:2px; letter-spacing:0.3px;">' + rpeVal + '</div>') : '';
+        const rpeBadge = rpeVal ? ('<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin:2px 0; letter-spacing:0.3px;">' + rpeVal + '</div>') : '';
         return '<button class="slot-clear-btn" onclick="event.stopPropagation(); clearSlot(' + tIdx + ', ' + sIdx + ')">✕</button>' +
           imgHtml +
           '<div class="slot-details">' +
@@ -3585,6 +3691,32 @@
           '<div style="font-size:0.65rem; color:var(--text-dim);">Click to add</div>' +
           '</div>';
       }
+    }
+
+    // Movement-tile clicks only update the modal's preview state (highlight
+    // the tile, auto-correct Zone/RPE if the movement doesn't fit the current
+    // Zone, live-refresh the 3-way validation) — they never write to
+    // classTracks or close the modal. Only "✓ Apply to Slot" (and Cancel)
+    // leave the modal, so browsing between movements can't accidentally
+    // commit or discard a slot.
+    function previewSymbol(sym) {
+      const validZones = MOVEMENT_ALLOWED_ZONES[sym] || ['Recovery', 'Endurance', 'Strength', 'Interval', 'Race Day'];
+      if (!validZones.includes(selectedModalZone)) {
+        const rejectedZone = selectedModalZone;
+        const rejectedRpe = selectedModalRpe;
+        selectedModalZone = validZones[0] || 'Recovery';
+        const allowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [1, 2, 3];
+        const numRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 2;
+        if (!allowedRpes.includes(numRpe)) {
+          selectedModalRpe = ZONE_DEFAULT_RPE[selectedModalZone] || 'RPE 2';
+        }
+        // Lesson 121: never overrule the user in silence.
+        showToast('⚡ "' + sym + '" is not valid in ' + rejectedZone +
+          ' — switched to ' + selectedModalZone +
+          (selectedModalRpe !== rejectedRpe ? ' / ' + selectedModalRpe : ''));
+      }
+      selectedModalSymbol = sym;
+      updateModalUI();
     }
 
     function updateSlotDom(tIdx, sIdx) {
@@ -3627,6 +3759,31 @@
             ' — switched to ' + selectedModalZone +
             (selectedModalRpe !== rejectedRpe ? ' / ' + selectedModalRpe : ''));
         }
+        // Same RPE validation the Apply-to-Slot button enforces — needed here
+        // too because EVERY commit path (movement-tile clicks included, not
+        // just the button) funnels through this one function. Without this,
+        // clicking a tile bypassed the button's disabled state entirely and
+        // could commit a zone- or movement-invalid RPE silently.
+        const finalNumRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 5;
+        const finalAllowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [];
+        const finalMovAllowedRpes = MOVEMENT_ALLOWED_RPES[symName] || null;
+        if (!finalAllowedRpes.includes(finalNumRpe)) {
+          showToast('⚠️ RPE ' + finalNumRpe + ' is not valid for the "' + selectedModalZone + '" zone — pick a highlighted RPE first.');
+          return;
+        }
+        // A dead-end Zone+Movement pairing (no RPE in this zone could ever
+        // satisfy the movement's typical range) is allowed through — grey,
+        // not amber — since there's no fixable alternative to nudge toward.
+        const finalZoneHasNoValidRpeForMovement = !!finalMovAllowedRpes && finalAllowedRpes.length > 0 &&
+          !finalAllowedRpes.some(r => finalMovAllowedRpes.includes(r));
+        if (finalMovAllowedRpes && !finalMovAllowedRpes.includes(finalNumRpe)) {
+          if (!finalZoneHasNoValidRpeForMovement) {
+            showToast('⚠️ RPE ' + finalNumRpe + ' is outside "' + symName + '"\'s typical range — pick a highlighted RPE first.');
+            return;
+          }
+          showToast('⚠️ Applied — no RPE in "' + selectedModalZone + '" matches "' + symName + '"\'s typical range. Flagged as not recommended.');
+        }
+
         const existing = (classTracks[tIdx] && classTracks[tIdx].movements[sIdx]) ? classTracks[tIdx].movements[sIdx] : null;
         const curTime = (existing && typeof existing === 'object' && existing.time && existing.time !== '') ? existing.time : '0:00';
         classTracks[tIdx].movements[sIdx] = { name: symName, time: curTime, zone: selectedModalZone, rpe: selectedModalRpe };
@@ -3663,6 +3820,10 @@
         showToast('⚠️ Choose a movement symbol before applying.');
         return;
       }
+      // RPE-vs-zone/movement validation now lives in selectSymbol() itself,
+      // since that's the one real commit path shared by this button, every
+      // movement tile, and the Auto-Zone tile — enforcing it there covers
+      // all of them instead of just this button.
       selectSymbol(symName);
     }
 
@@ -3821,6 +3982,63 @@
       }
 
       return { artist, title };
+    }
+
+    // Reads the artist (TPE1/TPE2) and title (TIT2) straight out of the
+    // file's embedded ID3v2 tag rather than guessing from the filename —
+    // many real MP3s carry accurate tag data even when the filename itself
+    // doesn't follow an "Artist - Title" pattern. Returns { artist: '',
+    // title: '' } if there's no ID3v2 header, no matching frames, or
+    // anything unexpected in the bytes.
+    function parseID3TagsFromArrayBuffer(buf) {
+      const result = { artist: '', title: '' };
+      function decodeFrameText(view, buf, frameStart, frameSize) {
+        const encoding = view.getUint8(frameStart);
+        const textBytes = new Uint8Array(buf, frameStart + 1, frameSize - 1);
+        let text = '';
+        if (encoding === 1 || encoding === 2) {
+          let start = 0;
+          let variant = 'utf-16le';
+          if (textBytes.length >= 2 && textBytes[0] === 0xFF && textBytes[1] === 0xFE) { start = 2; variant = 'utf-16le'; }
+          else if (textBytes.length >= 2 && textBytes[0] === 0xFE && textBytes[1] === 0xFF) { start = 2; variant = 'utf-16be'; }
+          else if (encoding === 2) { variant = 'utf-16be'; }
+          text = new TextDecoder(variant).decode(textBytes.slice(start));
+        } else if (encoding === 3) {
+          text = new TextDecoder('utf-8').decode(textBytes);
+        } else {
+          text = new TextDecoder('iso-8859-1').decode(textBytes);
+        }
+        return text.replace(/\u0000+$/, '').trim();
+      }
+      try {
+        const view = new DataView(buf);
+        if (buf.byteLength < 10) return result;
+        if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) return result; // "ID3"
+        const majorVersion = view.getUint8(3);
+        const tagSize = ((view.getUint8(6) & 0x7f) << 21) | ((view.getUint8(7) & 0x7f) << 14) | ((view.getUint8(8) & 0x7f) << 7) | (view.getUint8(9) & 0x7f);
+        let offset = 10;
+        const tagEnd = Math.min(10 + tagSize, buf.byteLength);
+        while (offset + 10 <= tagEnd) {
+          const frameId = String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
+          if (frameId === '\u0000\u0000\u0000\u0000') break;
+          let frameSize;
+          if (majorVersion >= 4) {
+            frameSize = ((view.getUint8(offset + 4) & 0x7f) << 21) | ((view.getUint8(offset + 5) & 0x7f) << 14) | ((view.getUint8(offset + 6) & 0x7f) << 7) | (view.getUint8(offset + 7) & 0x7f);
+          } else {
+            frameSize = (view.getUint8(offset + 4) << 24) | (view.getUint8(offset + 5) << 16) | (view.getUint8(offset + 6) << 8) | view.getUint8(offset + 7);
+          }
+          const frameStart = offset + 10;
+          if (frameSize <= 0 || frameStart + frameSize > buf.byteLength) break;
+          if ((frameId === 'TPE1' || frameId === 'TPE2') && !result.artist) {
+            result.artist = decodeFrameText(view, buf, frameStart, frameSize);
+          } else if (frameId === 'TIT2' && !result.title) {
+            result.title = decodeFrameText(view, buf, frameStart, frameSize);
+          }
+          if (result.artist && result.title) break;
+          offset = frameStart + frameSize;
+        }
+      } catch (e) { }
+      return result;
     }
 
     function readFileAsDataURL(file) {
@@ -4255,14 +4473,6 @@
       const targetTrack = classTracks[tIdx];
       const parsed = parseArtistAndTitleFromFileName(file.name);
 
-      // Always update song name & artist when attaching/replacing MP3 file.
-      // Artist is set unconditionally (even to '') — the old guard only
-      // wrote it when parsing found one, so a replacement file whose name
-      // has no "Artist - Title" separator (e.g. "06 Say Something.mp3")
-      // silently kept the PREVIOUS track's artist instead of clearing it.
-      targetTrack.name = parsed.title || targetTrack.name;
-      targetTrack.artist = parsed.artist;
-
       try {
         const base64Data = await readFileAsDataURL(file);
         targetTrack.audioDataUrl = base64Data;
@@ -4272,6 +4482,18 @@
         if (dur) targetTrack.duration = dur;
 
         const arrayBuf = await readFileAsArrayBuffer(file);
+
+        // Prefer the file's embedded ID3 tag over filename guessing —
+        // accurate even when the filename has no "Artist - Title" pattern
+        // (e.g. "09 - Hallowed Be Thy Name.mp3", which has no way to yield
+        // an artist from the filename alone). Artist is still set
+        // unconditionally (even to '') — the old guard only wrote it when
+        // parsing found one, so a replacement file with no artist anywhere
+        // silently kept the PREVIOUS track's artist instead of clearing it.
+        const id3Tags = parseID3TagsFromArrayBuffer(arrayBuf);
+        targetTrack.name = id3Tags.title || parsed.title || targetTrack.name;
+        targetTrack.artist = id3Tags.artist || parsed.artist;
+
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
           try {
