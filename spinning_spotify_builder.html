@@ -1534,6 +1534,15 @@
         style="font-size:0.72rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; text-align:center;">
         🚴 MOVEMENT SYMBOL</div>
       <div class="symbols-picker-grid" id="modalSymbolGrid"></div>
+
+      <!-- Commit bar: without this, changing only Zone or RPE was discarded on
+           close, because the sole commit path was clicking a movement tile. -->
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px;">
+        <button class="btn btn-outline btn-sm" onclick="closeSymbolModal()">Cancel</button>
+        <button class="btn btn-save btn-sm" id="applyToSlotBtn" onclick="applyModalSelection()"
+          style="background:linear-gradient(135deg, var(--accent-cyan), #00b0ff); color:#000; font-weight:900; padding:8px 20px; border-radius:8px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(0,229,255,0.4);"
+          title="Apply the selected Movement, Zone and RPE to this slot">✓ Apply to Slot</button>
+      </div>
     </div>
   </div>
 
@@ -2332,9 +2341,10 @@
       parts.push('    const statusEl = document.getElementById("mStatusText"); if (t.isLeadIn) { const nextTrackName = classTracks[1] ? classTracks[1].name : "Workout"; statusEl.textContent = "⏱️ Lead-In: " + formatCountdown(remSec) + " (Hit Play on Spotify!)"; } else if (nextMov && nextTimeSec > curSec) { const diff = nextTimeSec - curSec; statusEl.textContent = "⚡ " + nextMov.name + " in " + formatCountdown(diff); } else if (activeMov) { const trackRemSec = Math.max(0, durSec - curSec); statusEl.textContent = (trackRemSec === 0 && activeIdx === classTracks.length - 1) ? "🎉 Workout Complete!" : ("⚡ " + activeMov.name + " until track end (" + formatCountdown(trackRemSec) + ")"); } else { statusEl.textContent = "Ready"; }\n');
       parts.push('    const grid = document.getElementById("mMovGrid"); grid.innerHTML = "";\n');
       parts.push('    const ZONE_COLORS = { "Active Recovery": "#00bcd4", "Recovery": "#00bcd4", "Warm Up / Recovery": "#00bcd4", "Warm Up": "#00bcd4", "Aerobic Training": "#00e676", "Endurance": "#00e676", "Threshold Training": "#ffd600", "Strength": "#ffd600", "Anaerobic Training": "#ff9800", "Interval": "#ff9800", "Peak Performance": "#ff1744", "Race Day": "#ff1744" };\n');
+      parts.push('    const ZONE_RPE_BADGES = { "Warm Up / Recovery": "RPE 1-3", "Warm Up": "RPE 1-3", "Recovery": "RPE 1-3", "Endurance": "RPE 4-5", "Strength": "RPE 6-7", "Interval": "RPE 8-9", "Race Day": "RPE 10", "Progressive / Hybrid": "RPE 1-8" };\n');
       parts.push('    function getShade(zone, rpeStr) { const base = ZONE_COLORS[zone] || "#00e676"; if (!rpeStr) return base; const num = parseInt(String(rpeStr).replace(/[^0-9]/g, "")) || 5; if (zone === "Active Recovery" || zone === "Recovery" || zone === "Warm Up" || zone === "Warm Up / Recovery") { if (num <= 1) return "#80deea"; return "#00bcd4"; } if (zone === "Aerobic Training" || zone === "Endurance") { if (num <= 3) return "#a5d6a7"; if (num === 4) return "#00e676"; return "#00c853"; } if (zone === "Threshold Training" || zone === "Strength") { if (num <= 6) return "#fff59d"; if (num === 7) return "#ffd600"; return "#fbc02d"; } if (zone === "Anaerobic Training" || zone === "Interval") { return "#ff9800"; } if (zone === "Peak Performance" || zone === "Race Day") { return "#ff1744"; } return base; }\n');
       parts.push('    const zColor = ZONE_COLORS[t.zone] || "#00e676";\n');
-      parts.push('    movs.forEach(m => { const badge = document.createElement("div"); const isActive = (m.name === activeMov.name && m.time === activeMov.time); const isNextFlashing = (nextMov && m.name === nextMov.name && m.time === nextMov.time && (nextTimeSec - curSec) <= 10 && (nextTimeSec - curSec) > 0); badge.className = "cockpit-hud-movbadge " + (isActive ? "active " : "") + (isNextFlashing ? "flash-warning " : ""); const mZone = m.zone || t.zone; const rpeVal = (m && m.rpe) ? m.rpe.replace(/\\s*\\(.*\\)/, "").trim() : ""; const slotColor = getShade(mZone, rpeVal); const rpeBadge = rpeVal ? "<div style=\\"background:" + slotColor + "25; border:1px solid " + slotColor + "; color:" + slotColor + "; font-size:0.78rem; font-weight:900; letter-spacing:0.5px; padding:1px 6px; border-radius:4px; margin:2px 0; display:inline-block; text-align:center; width:fit-content;\\">" + rpeVal + "</div>" : ""; const iconSrc = SYMBOL_ICONS[m.name] || ""; const imgHtml = iconSrc ? "<div style=\\"background:" + slotColor + "; width:34px; height:34px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);\\"><img src=\\"" + iconSrc + "\\" style=\\"max-width:100%; max-height:100%; object-fit:contain;\\" alt=\\"" + m.name + "\\" /></div>" : "<span>🚴</span>"; badge.innerHTML = imgHtml + "<div style=\\"display:flex; flex-direction:column; line-height:1.2; text-align:left; flex:1; min-width:0;\\"><span style=\\"font-weight:800; font-size:0.88rem; color:#fff; white-space:normal; line-height:1.2; word-break:break-word;\\">" + m.name + "</span>" + rpeBadge + "<span style=\\"font-size:0.75rem; color:var(--accent-cyan); font-weight:700;\\">" + (m.time||"0:00") + "</span></div>"; grid.appendChild(badge); });\n');
+      parts.push('    movs.forEach(m => { const badge = document.createElement("div"); const isActive = (m.name === activeMov.name && m.time === activeMov.time); const isNextFlashing = (nextMov && m.name === nextMov.name && m.time === nextMov.time && (nextTimeSec - curSec) <= 10 && (nextTimeSec - curSec) > 0); badge.className = "cockpit-hud-movbadge " + (isActive ? "active " : "") + (isNextFlashing ? "flash-warning " : ""); const mZone = m.zone || t.zone; const rpeSrc = (m && m.rpe) ? m.rpe : (ZONE_RPE_BADGES[mZone] || ""); const rpeVal = rpeSrc ? rpeSrc.replace(/\\s*\\(.*\\)/, "").trim() : ""; const slotColor = getShade(mZone, rpeVal); const rpeBadge = rpeVal ? "<div style=\\"background:" + slotColor + "25; border:1px solid " + slotColor + "; color:" + slotColor + "; font-size:0.78rem; font-weight:900; letter-spacing:0.5px; padding:1px 6px; border-radius:4px; margin:2px 0; display:inline-block; text-align:center; width:fit-content;\\">" + rpeVal + "</div>" : ""; const iconSrc = SYMBOL_ICONS[m.name] || ""; const imgHtml = iconSrc ? "<div style=\\"background:" + slotColor + "; width:34px; height:34px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);\\"><img src=\\"" + iconSrc + "\\" style=\\"max-width:100%; max-height:100%; object-fit:contain;\\" alt=\\"" + m.name + "\\" /></div>" : "<span>🚴</span>"; badge.innerHTML = imgHtml + "<div style=\\"display:flex; flex-direction:column; line-height:1.2; text-align:left; flex:1; min-width:0;\\"><span style=\\"font-weight:800; font-size:0.88rem; color:#fff; white-space:normal; line-height:1.2; word-break:break-word;\\">" + m.name + "</span>" + rpeBadge + "<span style=\\"font-size:0.75rem; color:var(--accent-cyan); font-weight:700;\\">" + (m.time||"0:00") + "</span></div>"; grid.appendChild(badge); });\n');
       parts.push('  }\n');
       parts.push('  function parseSec(tStr) { if (!tStr) return 0; const p = String(tStr).split(":").map(Number); return p.length === 2 ? (p[0]*60 + p[1]) : (p[0]||0); }\n');
       parts.push('  function togglePlay() { const t = classTracks[activeIdx]; if (!t) return; if (isPlaying) { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; isPlaying = false; if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.pause(); } catch(e){} } render(); } else { isPlaying = true; render(); if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.play(); } catch(e){} } if (t.audioDataUrl) { if (audio.src !== t.audioDataUrl) { audio.src = t.audioDataUrl; } try { audio.currentTime = curSec; const p = audio.play(); if (p !== undefined) p.catch(function(err){}); } catch(e){} } if (!fallbackTimer) { fallbackTimer = setInterval(() => { const currentTrack = classTracks[activeIdx] || {}; const durSec = parseSec(currentTrack.duration) || 10; if (curSec >= durSec) { nextTrack(); } else { curSec++; render(); } }, 1000); } } }\n');
@@ -3285,18 +3295,42 @@
       'RPE 10': ['Peak Performance', 'Race Day']
     };
 
+    // MOVEMENT_ALLOWED_ZONES — updated from Karen's Class Design Quick Reference Sheet (PDF)
     const MOVEMENT_ALLOWED_ZONES = {
       'Warm Up': ['Active Recovery', 'Recovery'],
       'Recovery': ['Active Recovery', 'Recovery'],
+      // Seated Flat covers ALL zones (Karen explicitly confirmed in updated PDF)
       'Seated Flat': ['Active Recovery', 'Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Recovery', 'Endurance', 'Strength', 'Interval', 'Race Day'],
+      // Standing Flat/Running: Interval, Endurance, Strength (Karen added Strength in updated PDF)
       'Standing Flat': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
-      'Running with Resistance': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
+      // Running with Resistance = RUNNING ON A HILL: Strength, Interval, Race Day zones (hill movement)
+      'Running with Resistance': ['Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Strength', 'Interval', 'Race Day'],
+      // Jumps: Endurance, Interval (kept as superset with Strength/Threshold for flexibility)
       'Jumps': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
-      'Jumps on a Hill': ['Threshold Training', 'Anaerobic Training', 'Strength', 'Interval'],
-      'Seated Climb': ['Active Recovery', 'Aerobic Training', 'Threshold Training', 'Recovery', 'Endurance', 'Strength'],
+      // Jumps on a Hill: Strength, Interval, Race Day — Race Day + Peak Performance added (were missing)
+      'Jumps on a Hill': ['Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Strength', 'Interval', 'Race Day'],
+      // Seated Climb: Endurance, Strength, Interval, Race Day — Interval + Race Day + Peak added (were missing)
+      'Seated Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Endurance', 'Strength', 'Interval', 'Race Day'],
       'Standing Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Endurance', 'Strength', 'Interval', 'Race Day'],
       'Sprints': ['Anaerobic Training', 'Peak Performance', 'Interval', 'Race Day'],
       'Sprints on a Hill': ['Anaerobic Training', 'Peak Performance', 'Interval', 'Race Day']
+    };
+
+    // MOVEMENT_ALLOWED_RPES — sourced from Karen's updated Class Design Quick Reference Sheet PDF
+    // RPE word bridge: Easy=1-2, Moderate=3-4, Hard=5-6, Very Hard=7-8, Extremely Hard=9, Max=10
+    // Validation mode: Zone-constrained (primary). Movement-constrained shown as amber warning.
+    const MOVEMENT_ALLOWED_RPES = {
+      'Warm Up':                 [1, 2],
+      'Recovery':                [1, 2],
+      'Seated Flat':             [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],  // ALL — Karen explicitly extended to Max
+      'Standing Flat':           [3, 4, 5, 6],                        // Moderate to Hard
+      'Running with Resistance': [3, 4, 5, 6, 7],                    // Hill: Moderate-Hard / Very Hard
+      'Jumps':                   [3, 4, 5, 6, 7],                     // Moderate to Very Hard
+      'Seated Climb':            [3, 4, 5, 6, 7],                     // Moderate-Hard / Very Hard (Karen added Very Hard)
+      'Standing Climb':          [5, 6, 7],                           // Hard to Very Hard
+      'Jumps on a Hill':         [5, 6, 7],                           // Hard to Very Hard
+      'Sprints':                 [7, 8, 9, 10],                       // Very Hard to Max (Karen's updated PDF)
+      'Sprints on a Hill':       [7, 8, 9, 10]                        // Very Hard to Max (Karen's updated PDF)
     };
 
     function setModalZone(zoneName, preventRpeSnap) {
@@ -3308,6 +3342,18 @@
       const allowedRpes = ZONE_ALLOWED_RPES[zoneName] || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       if (!preventRpeSnap && !allowedRpes.includes(numRpe)) {
         selectedModalRpe = ZONE_DEFAULT_RPE[zoneName] || 'RPE 5';
+      }
+
+      // Symmetric with selectSymbol()'s auto-zone snap: a Movement that no
+      // longer fits the newly picked Zone is cleared rather than left as a
+      // stale, unpredictable mismatch (there's no single "default movement"
+      // per zone to auto-swap to, unlike Zone/RPE which do snap together).
+      if (selectedModalSymbol) {
+        const validZonesForMov = MOVEMENT_ALLOWED_ZONES[selectedModalSymbol] || [];
+        if (!validZonesForMov.includes(zoneName)) {
+          showToast('⚠️ "' + selectedModalSymbol + '" cleared — not valid for ' + zoneName + ' zone.');
+          selectedModalSymbol = '';
+        }
       }
 
       updateModalUI();
@@ -3352,13 +3398,50 @@
       });
 
       // 2. Update RPE Buttons with Cross-Validation Dimming
+      // Primary constraint: Zone (Decision 2-A). Secondary: Movement amber warning.
       const allowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const movAllowedRpes = MOVEMENT_ALLOWED_RPES[selectedModalSymbol] || null;
       const curNumRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 5;
+
+      // Some Movement+Zone combinations are dead ends by construction: the
+      // Zone's entire allowed-RPE set has zero overlap with the Movement's
+      // typical range (e.g. "Jumps" in Anaerobic Training, whose only valid
+      // RPE is 9, but Jumps tops out at 7). Hard-blocking there just traps
+      // the user — there is no "highlighted RPE" to switch to within this
+      // zone. Downgrade those to a neutral "grey" (allowed, not recommended)
+      // instead of the amber "pick a valid one" nudge, which stays reserved
+      // for cases where a genuinely valid RPE does exist in this zone.
+      const zoneHasNoValidRpeForMovement = !!movAllowedRpes && allowedRpes.length > 0 &&
+        !allowedRpes.some(r => movAllowedRpes.includes(r));
+
+      // Block Apply on a real broken rule: RPE must be valid for the selected
+      // Zone (else it's the fully "Disabled/Contradictory" state — can happen
+      // on modal open if a legacy slot's saved zone/RPE predates current
+      // rules) AND, only when a fixable alternative actually exists in this
+      // zone, valid for the selected Movement's typical exertion range.
+      const isZoneValidRpe = allowedRpes.includes(curNumRpe);
+      const isMovValidRpe = !movAllowedRpes || movAllowedRpes.includes(curNumRpe) || zoneHasNoValidRpeForMovement;
+      const isRuleBroken = !isZoneValidRpe || !isMovValidRpe;
+      const applyBtn = document.getElementById('applyToSlotBtn');
+      if (applyBtn) {
+        applyBtn.disabled = isRuleBroken;
+        applyBtn.style.opacity = isRuleBroken ? '0.35' : '1';
+        applyBtn.style.cursor = isRuleBroken ? 'not-allowed' : 'pointer';
+        applyBtn.style.boxShadow = isRuleBroken ? 'none' : '0 0 14px rgba(0,229,255,0.4)';
+        applyBtn.title = !isZoneValidRpe ?
+          ('RPE ' + curNumRpe + ' is not valid for the "' + selectedModalZone + '" zone — pick a highlighted RPE to apply.') :
+          (!movAllowedRpes || movAllowedRpes.includes(curNumRpe)) ?
+          'Apply the selected Movement, Zone and RPE to this slot' :
+          zoneHasNoValidRpeForMovement ?
+          ('⚠️ No RPE in "' + selectedModalZone + '" matches "' + selectedModalSymbol + '"\'s typical range — allowed, but not recommended.') :
+          ('RPE ' + curNumRpe + ' is outside "' + selectedModalSymbol + '"\'s typical range — pick a highlighted RPE to apply.');
+      }
 
       for (let r = 1; r <= 10; r++) {
         const btn = document.getElementById('modalRpeBtn_' + r);
         if (btn) {
-          const isAllowed = allowedRpes.includes(r);
+          const isZoneAllowed = allowedRpes.includes(r);
+          const isMovAllowed = !movAllowedRpes || movAllowedRpes.includes(r);
           const isSelected = (r === curNumRpe);
 
           if (isSelected) {
@@ -3368,13 +3451,32 @@
             btn.style.boxShadow = '0 0 10px var(--accent-cyan)';
             btn.style.transform = 'scale(1.1)';
             btn.style.opacity = '1.0';
-          } else if (isAllowed) {
+          } else if (isZoneAllowed && isMovAllowed) {
+            // Valid for both zone and movement
             btn.style.border = '1px solid rgba(255,255,255,0.2)';
             btn.style.background = 'rgba(255,255,255,0.08)';
             btn.style.color = '#fff';
             btn.style.boxShadow = 'none';
             btn.style.transform = 'scale(1.0)';
             btn.style.opacity = '0.85';
+          } else if (isZoneAllowed && !isMovAllowed && zoneHasNoValidRpeForMovement) {
+            // Zone/Movement pairing is a structural dead end (no RPE in this
+            // zone could ever satisfy the movement) — allowed, not recommended.
+            btn.style.border = '1px solid rgba(148,163,184,0.45)';
+            btn.style.background = 'rgba(148,163,184,0.08)';
+            btn.style.color = 'rgba(203,213,225,0.8)';
+            btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(0.97)';
+            btn.style.opacity = '0.65';
+          } else if (isZoneAllowed && !isMovAllowed) {
+            // Valid for zone but outside movement's exertion range (amber advisory) —
+            // a genuinely valid RPE exists elsewhere in this zone, so this stays blocked.
+            btn.style.border = '1px solid rgba(255,145,0,0.5)';
+            btn.style.background = 'rgba(255,145,0,0.07)';
+            btn.style.color = 'rgba(255,200,100,0.85)';
+            btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(0.97)';
+            btn.style.opacity = '0.6';
           } else {
             // Disabled / Contradictory RPE for this zone
             btn.style.border = '1px solid rgba(255,255,255,0.05)';
@@ -3411,13 +3513,13 @@
             opt.style.transform = 'scale(1.02)';
             opt.innerHTML = img + '<div style="font-weight:800; color:#fff;">' + sym + '</div>' +
               '<div style="font-size:0.65rem; color:var(--accent-cyan); font-weight:800; margin-top:2px;">✓ Selected</div>';
-            opt.onclick = () => selectSymbol(sym);
+            opt.onclick = () => previewSymbol(sym);
           } else if (isMovementValid) {
             opt.style.opacity = '1.0';
             opt.style.border = '1px solid rgba(255,255,255,0.15)';
             opt.style.background = 'rgba(255,255,255,0.04)';
             opt.innerHTML = img + '<div style="font-weight:700; color:#fff;">' + sym + '</div>';
-            opt.onclick = () => selectSymbol(sym);
+            opt.onclick = () => previewSymbol(sym);
           } else {
             // Contradictory movement for current Zone (Auto-adjusts Zone on click)
             opt.style.opacity = '0.55';
@@ -3428,12 +3530,7 @@
             opt.innerHTML = img + '<div style="font-weight:700; color:#eee;">' + sym + '</div>' +
               '<div style="font-size:0.62rem; color:#ff9100; font-weight:800; margin-top:2px;">⚡ Auto-Zone: ' + recZone + '</div>';
 
-            opt.onclick = () => {
-              showToast('⚡ Auto-switched to ' + recZone + ' Zone for "' + sym + '"');
-              selectedModalZone = recZone;
-              selectedModalRpe = ZONE_DEFAULT_RPE[recZone] || 'RPE 5';
-              selectSymbol(sym);
-            };
+            opt.onclick = () => previewSymbol(sym);
           }
           grid.appendChild(opt);
         });
@@ -3496,17 +3593,17 @@
       const movName = mov ? (typeof mov === 'object' ? (mov.name || '') : mov) : '';
       const movTime = mov ? (typeof mov === 'object' ? (mov.time || '') : '') : '';
       const slotZone = (mov && typeof mov === 'object' && mov.zone) ? mov.zone : track.zone;
-      const slotColor = ZONE_COLORS[slotZone] || zoneColor;
 
       if (movName) {
         const iconSrc = SYMBOL_ICONS[movName] || '';
+        const slotColor = ZONE_COLORS[slotZone] || zoneColor;
+        const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
         const imgHtml = iconSrc ?
           ('<div style="background:' + slotColor + '; width:38px; height:38px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);">' +
             '<img src="' + iconSrc + '" style="max-width:100%; max-height:100%; object-fit:contain;" alt="' + movName + '" />' +
             '</div>') :
           ('<div class="slot-icon-placeholder" style="background:' + slotColor + '33; color:' + slotColor + ';">🚴</div>');
-        const rpeVal = (mov && typeof mov === 'object' && mov.rpe) ? mov.rpe.replace(/\s*\(.*\)/, '').trim() : '';
-        const rpeBadge = rpeVal ? ('<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin-top:2px; letter-spacing:0.3px;">' + rpeVal + '</div>') : '';
+        const rpeBadge = rpeVal ? ('<div style="font-size:0.72rem; font-weight:900; color:' + slotColor + '; line-height:1.2; margin:2px 0; letter-spacing:0.3px;">' + rpeVal + '</div>') : '';
         return '<button class="slot-clear-btn" onclick="event.stopPropagation(); clearSlot(' + tIdx + ', ' + sIdx + ')">✕</button>' +
           imgHtml +
           '<div class="slot-details">' +
@@ -3520,6 +3617,32 @@
           '<div style="font-size:0.65rem; color:var(--text-dim);">Click to add</div>' +
           '</div>';
       }
+    }
+
+    // Movement-tile clicks only update the modal's preview state (highlight
+    // the tile, auto-correct Zone/RPE if the movement doesn't fit the current
+    // Zone, live-refresh the 3-way validation) — they never write to
+    // classTracks or close the modal. Only "✓ Apply to Slot" (and Cancel)
+    // leave the modal, so browsing between movements can't accidentally
+    // commit or discard a slot.
+    function previewSymbol(sym) {
+      const validZones = MOVEMENT_ALLOWED_ZONES[sym] || ['Recovery', 'Endurance', 'Strength', 'Interval', 'Race Day'];
+      if (!validZones.includes(selectedModalZone)) {
+        const rejectedZone = selectedModalZone;
+        const rejectedRpe = selectedModalRpe;
+        selectedModalZone = validZones[0] || 'Recovery';
+        const allowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [1, 2, 3];
+        const numRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 2;
+        if (!allowedRpes.includes(numRpe)) {
+          selectedModalRpe = ZONE_DEFAULT_RPE[selectedModalZone] || 'RPE 2';
+        }
+        // Lesson 121: never overrule the user in silence.
+        showToast('⚡ "' + sym + '" is not valid in ' + rejectedZone +
+          ' — switched to ' + selectedModalZone +
+          (selectedModalRpe !== rejectedRpe ? ' / ' + selectedModalRpe : ''));
+      }
+      selectedModalSymbol = sym;
+      updateModalUI();
     }
 
     function updateSlotDom(tIdx, sIdx) {
@@ -3547,13 +3670,46 @@
         const { tIdx, sIdx } = activeModalSlot;
         const validZones = MOVEMENT_ALLOWED_ZONES[symName] || ['Recovery', 'Endurance', 'Strength', 'Interval', 'Race Day'];
         if (!validZones.includes(selectedModalZone)) {
+          const rejectedZone = selectedModalZone;
+          const rejectedRpe = selectedModalRpe;
           selectedModalZone = validZones[0] || 'Recovery';
           const allowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [1, 2, 3];
           const numRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 2;
           if (!allowedRpes.includes(numRpe)) {
             selectedModalRpe = ZONE_DEFAULT_RPE[selectedModalZone] || 'RPE 2';
           }
+          // Lesson 121: never overrule the user in silence. This branch used to
+          // rewrite the chosen Zone/RPE with no feedback at all, so the slot
+          // came back as something the user never picked and looked broken.
+          showToast('⚠️ "' + symName + '" is not valid in ' + rejectedZone +
+            ' — switched to ' + selectedModalZone +
+            (selectedModalRpe !== rejectedRpe ? ' / ' + selectedModalRpe : ''));
         }
+        // Same RPE validation the Apply-to-Slot button enforces — needed here
+        // too because EVERY commit path (movement-tile clicks included, not
+        // just the button) funnels through this one function. Without this,
+        // clicking a tile bypassed the button's disabled state entirely and
+        // could commit a zone- or movement-invalid RPE silently.
+        const finalNumRpe = parseInt(selectedModalRpe.replace(/[^0-9]/g, '')) || 5;
+        const finalAllowedRpes = ZONE_ALLOWED_RPES[selectedModalZone] || [];
+        const finalMovAllowedRpes = MOVEMENT_ALLOWED_RPES[symName] || null;
+        if (!finalAllowedRpes.includes(finalNumRpe)) {
+          showToast('⚠️ RPE ' + finalNumRpe + ' is not valid for the "' + selectedModalZone + '" zone — pick a highlighted RPE first.');
+          return;
+        }
+        // A dead-end Zone+Movement pairing (no RPE in this zone could ever
+        // satisfy the movement's typical range) is allowed through — grey,
+        // not amber — since there's no fixable alternative to nudge toward.
+        const finalZoneHasNoValidRpeForMovement = !!finalMovAllowedRpes && finalAllowedRpes.length > 0 &&
+          !finalAllowedRpes.some(r => finalMovAllowedRpes.includes(r));
+        if (finalMovAllowedRpes && !finalMovAllowedRpes.includes(finalNumRpe)) {
+          if (!finalZoneHasNoValidRpeForMovement) {
+            showToast('⚠️ RPE ' + finalNumRpe + ' is outside "' + symName + '"\'s typical range — pick a highlighted RPE first.');
+            return;
+          }
+          showToast('⚠️ Applied — no RPE in "' + selectedModalZone + '" matches "' + symName + '"\'s typical range. Flagged as not recommended.');
+        }
+
         const existing = (classTracks[tIdx] && classTracks[tIdx].movements[sIdx]) ? classTracks[tIdx].movements[sIdx] : null;
         const curTime = (existing && typeof existing === 'object' && existing.time && existing.time !== '') ? existing.time : '0:00';
         classTracks[tIdx].movements[sIdx] = { name: symName, time: curTime, zone: selectedModalZone, rpe: selectedModalRpe };
@@ -3573,6 +3729,28 @@
       } else {
         closeSymbolModal();
       }
+    }
+
+    // setModalZone()/setModalRpe() only mutate modal state, so a Zone or RPE
+    // change never reached classTracks unless a movement tile was clicked. When
+    // the movement was already selected there was no reason to click it again,
+    // and the edit was silently lost on close. Routes through selectSymbol() so
+    // there is still exactly one commit path.
+    function applyModalSelection() {
+      if (!activeModalSlot) { closeSymbolModal(); return; }
+      const { tIdx, sIdx } = activeModalSlot;
+      const existing = (classTracks[tIdx] && classTracks[tIdx].movements[sIdx]) ? classTracks[tIdx].movements[sIdx] : null;
+      const existingName = existing ? (typeof existing === 'object' ? (existing.name || '') : existing) : '';
+      const symName = selectedModalSymbol || existingName;
+      if (!symName) {
+        showToast('⚠️ Choose a movement symbol before applying.');
+        return;
+      }
+      // RPE-vs-zone/movement validation now lives in selectSymbol() itself,
+      // since that's the one real commit path shared by this button, every
+      // movement tile, and the Auto-Zone tile — enforcing it there covers
+      // all of them instead of just this button.
+      selectSymbol(symName);
     }
 
     function clearSlot(tIdx, sIdx) {
