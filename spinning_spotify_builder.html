@@ -2754,7 +2754,7 @@
           '<div class="track-num">' + (tIdx + 1) + '</div>' +
           '<div class="track-info-fields">' +
           '<input type="text" class="song-title-input" value="' + (track.name || '') + '" placeholder="Song Title" oninput="updateTrackProp(' + tIdx + ', \'name\', this.value)" />' +
-          '<input type="text" class="song-artist-input" value="' + (track.artist || '') + '" placeholder="Artist / Description" oninput="updateTrackProp(' + tIdx + ', \'artist\', this.value)" />' +
+          '<input type="text" class="song-artist-input" id="artistInput_' + tIdx + '" value="' + (track.artist || '') + '" placeholder="Artist / Description" oninput="updateTrackProp(' + tIdx + ', \'artist\', this.value)" />' +
           '</div>' +
           '<div class="form-group" style="min-width:85px;">' +
           '<div class="form-label" style="display:flex; justify-content:space-between; align-items:center;">' +
@@ -4356,7 +4356,7 @@
       activeSpotifyModalIdx = -1;
     }
 
-    async function fetchSpotifyTrackMetadata(track, spotifyUrl) {
+    async function fetchSpotifyTrackMetadata(track, spotifyUrl, tIdx) {
       if (!track || !spotifyUrl) return;
       const cleanUrl = spotifyUrl.split('?')[0];
       try {
@@ -4367,12 +4367,28 @@
           if (data.title) {
             track.name = data.title;
           }
+          // Spotify's public oEmbed response never includes an artist field
+          // (unlike SoundCloud's, which has author_name) — checked against
+          // several real tracks, title is always just the bare song name.
+          // This branch is kept in case Spotify ever adds one; it will not
+          // fire against the API as it exists today.
           if (data.artist_name || data.author_name) {
             track.artist = data.artist_name || data.author_name;
           }
           renderTracks();
           autoSave();
-          showToast('🟢 Updated Track: "' + (track.name || '') + '" by ' + (track.artist || ''));
+          if (track.artist) {
+            showToast('🟢 Updated Track: "' + (track.name || '') + '" by ' + track.artist);
+          } else {
+            // No automatic source for artist here — make that obvious instead
+            // of leaving a silently-blank field, and put the cursor right in
+            // the artist box so typing it is the very next action.
+            showToast('🟢 Title filled: "' + (track.name || '') + '" — Spotify doesn\'t provide artist via link data, please add it below');
+            if (typeof tIdx === 'number') {
+              const artistInput = document.getElementById('artistInput_' + tIdx);
+              if (artistInput) { artistInput.focus(); artistInput.select(); }
+            }
+          }
         }
       } catch (e) {
         console.warn('Spotify oEmbed fetch note:', e);
@@ -4381,8 +4397,9 @@
 
     async function saveSpotifyLink() {
       if (activeSpotifyModalIdx < 0 || !classTracks[activeSpotifyModalIdx]) return;
+      const tIdx = activeSpotifyModalIdx;
       const val = document.getElementById('spotifyUrlInput').value.trim();
-      const track = classTracks[activeSpotifyModalIdx];
+      const track = classTracks[tIdx];
       track.spotifyUrl = val;
       const sId = extractSpotifyTrackId(val);
       track.spotifyTrackId = sId;
@@ -4391,7 +4408,7 @@
       autoSave();
       if (sId) {
         showToast('🟢 Linked Spotify Track ID: ' + sId + ' - Auto-fetching metadata...');
-        await fetchSpotifyTrackMetadata(track, val);
+        await fetchSpotifyTrackMetadata(track, val, tIdx);
       } else {
         showToast('💡 Spotify link cleared');
       }
