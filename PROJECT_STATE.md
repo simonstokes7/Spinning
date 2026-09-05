@@ -3,7 +3,37 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.32: found via direct CSS diff against `spinning_local_builder.html` that this file was never brought up to the "roomier" topbar standard the other builders received in an earlier pass — fixed, plus widened the gap between the two pre-start buttons
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.33: "Import Spotify Playlist" was returning "No tracks found" against a real, non-empty playlist — Spotify's Feb 2026 migration also renamed each item's nested field from `track` to `item`; fixed to request/accept both
+
+---
+
+**spinning_spotify_builder.html v4.9.33 (2026-09-06) — Import's "No Tracks Found" Fixed (Feb 2026 Field Rename, Round 2)**
+- User tested "Import Spotify Playlist" for real against a playlist visibly
+  containing 5 real songs (screenshot showed the actual Spotify web player
+  open side-by-side with the songs listed) and got "No tracks found in that
+  playlist." — a real bug, not an empty-playlist false alarm.
+- Root cause: the same Feb 2026 Dev Mode migration already used to fix the
+  endpoint path (v4.9.27, `/tracks` → `/items`) turns out to have **also**
+  renamed the per-item nested field from `track` to `item` (`track` kept
+  only as a deprecated alias) — confirmed by checking Spotify's live docs
+  again. `loadSpotifyPlaylistPreview()`'s `fields` filter was still
+  requesting `items(track(...))`; on the new endpoint that no longer
+  resolves via the `fields` partial-response filter even though the
+  deprecated field nominally still exists in a full response, so every item
+  came back with no usable nested data and the loop silently pushed zero
+  tracks.
+- Fixed defensively rather than betting on one name: the `fields` param now
+  requests **both** `item(...)` and `track(...)` shapes for each item
+  (`fields=next,items(item(...),track(...))`, URL-encoded), and the parsing
+  loop now reads `item.item || item.track` — works regardless of which field
+  name the API actually resolves, so a future partial rollback or inconsistency
+  on Spotify's side won't silently break this again either.
+- Verified via Python esprima (0 errors) and headless Playwright: mocked
+  both the new response shape (`item` field only) and the old shape
+  (`track` field only) and confirmed the preview correctly finds and
+  displays the track in both cases, with no "No tracks found" false
+  negative either way.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.33_ImportItemFieldFix_20260906_073106.html`.
 
 ---
 
@@ -811,7 +841,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.32: found 
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.32 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.33 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
