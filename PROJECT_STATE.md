@@ -3,7 +3,55 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.26: user couldn't read v4.9.25's diagnostic toasts before the redirect fired — swapped all seven to blocking `alert()`s (temporary debug aid) so they must be read/dismissed before anything proceeds
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.27: found the real cause via the diagnostic alerts — Spotify's Feb 2026 Dev Mode migration deprecated the playlist-creation and tracks endpoints this code was calling; switched to the current ones
+
+---
+
+**spinning_spotify_builder.html v4.9.27 (2026-09-05) — Real Fix: Spotify's Feb 2026 Dev Mode Endpoint Migration**
+- The v4.9.26 diagnostic alerts finally caught it: the user reported the
+  exact sequence — `[diag: no-token-A]` → real Spotify consent screen,
+  Agree → **`[diag: 401-B-create]`** → same consent screen again, Agree
+  again → **the same `401-B-create` alert again**. Getting the identical
+  failure on the identical call immediately after a completely fresh,
+  fully-consented re-login ruled out every prior theory (stale scope,
+  stale/unwritable playlist, NaN expiry) at once — nothing about the token
+  or consent was ever the problem. The failure was pinned to one specific
+  call: creating the playlist.
+- Checked Spotify's live developer docs directly (this is dated after this
+  assistant's training cutoff, so it couldn't have been known without
+  checking) and found **Spotify's "February 2026 Dev Mode Changes" migration
+  guide**: for Development Mode apps specifically, `POST
+  /users/{user_id}/playlists` — this code's create-playlist call — is
+  replaced by `POST /me/playlists`. The old endpoint is rejected outright
+  for Dev Mode apps regardless of how valid or freshly-consented the token
+  is, which is exactly why re-authenticating could never break the loop —
+  there was nothing wrong with the login, the endpoint itself was gone.
+- **The same migration guide named a second breaking change** this code was
+  also exposed to, not yet reported as broken but would have failed the
+  moment playlist creation started working again: all `/playlists/{id}/tracks`
+  endpoints became `/playlists/{id}/items`. Fixed in both places that used
+  it — `saveClassToSpotify()`'s track-writing `PUT`/`POST` call, and
+  `loadSpotifyPlaylistPreview()`'s (Import feature) `GET` call.
+- **Implementation**: create-playlist now calls `POST /v1/me/playlists`
+  directly — no user ID needed, so the separate `GET /v1/me` lookup
+  (previously needed only to obtain that ID) was removed entirely, along
+  with its now-dead `handleSpotifyAuthFailure('me')` error path. Both
+  `/tracks` URLs changed to `/items`.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  a fresh "Save to Spotify" now calls `POST /v1/me/playlists` (with no
+  `/v1/me` or `/v1/users/...` call preceding it) followed by `PUT
+  .../items`, correctly stores the returned playlist id/url, zero console
+  errors; confirmed the Import feature's preview fetch against `.../items`
+  returns and renders track data correctly, zero console errors.
+- **Left as designed, not a regression**: the v4.9.23–26 defensive work
+  (circuit breaker, `show_dialog=true`, 403-recreate-fresh-playlist logic,
+  NaN-expiry guard, diagnostic instrumentation) all stays — none of it was
+  wrong, it just wasn't sufficient on its own since the actual blocker was
+  upstream of anything client-side logic could route around. The diagnostic
+  `alert()`s (v4.9.26) should be reverted back to non-blocking toasts once
+  the user confirms this fix actually works end-to-end — deliberately left
+  in place for this pass in case another distinct issue surfaces.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.27_Feb2026DevModeEndpointMigration_20260905_162434.html`.
 
 ---
 
@@ -550,7 +598,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.26: user c
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.26 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.27 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

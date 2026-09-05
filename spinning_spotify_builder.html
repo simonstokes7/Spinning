@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.26)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.27)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.26</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.27</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1767,10 +1767,11 @@
         let playlistId = isRetry ? '' : (window.spotifyClassPlaylistId || '');
 
         if (!playlistId) {
-          const meRes = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + token } });
-          if (meRes.status === 401 || meRes.status === 403) { await handleSpotifyAuthFailure('me'); return 'redirecting'; }
-          const me = await meRes.json();
-          const createRes = await fetch('https://api.spotify.com/v1/users/' + me.id + '/playlists', {
+          // Spotify's Feb 2026 Dev Mode migration replaced POST /users/{id}/playlists
+          // with POST /me/playlists for Development Mode apps — the old form is
+          // rejected outright regardless of token validity, so no /v1/me lookup is
+          // needed here any more either.
+          const createRes = await fetch('https://api.spotify.com/v1/me/playlists', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: classTitle, description: 'Created by Spinning Class Builder', public: false })
@@ -1806,7 +1807,7 @@
         for (let i = 0; i < trackUris.length; i += 100) {
           const chunk = trackUris.slice(i, i + 100);
           const method = i === 0 ? 'PUT' : 'POST';
-          const res = await fetch('https://api.spotify.com/v1/playlists/' + playlistId + '/tracks', {
+          const res = await fetch('https://api.spotify.com/v1/playlists/' + playlistId + '/items', {
             method: method,
             headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uris: chunk })
@@ -2516,7 +2517,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.26)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.27)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2639,7 +2640,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.26_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.27_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -4775,7 +4776,7 @@
       previewArea.innerHTML = '<p style="color:#cbd5e1; font-size:0.85rem;">⏳ Loading playlist tracks...</p>';
       try {
         const tracks = [];
-        let nextUrl = 'https://api.spotify.com/v1/playlists/' + playlistId + '/tracks?limit=100&fields=next,items(track(name,duration_ms,external_urls,artists(name)))';
+        let nextUrl = 'https://api.spotify.com/v1/playlists/' + playlistId + '/items?limit=100&fields=next,items(track(name,duration_ms,external_urls,artists(name)))';
         while (nextUrl) {
           const res = await fetch(nextUrl, { headers: { Authorization: 'Bearer ' + token } });
           if (!res.ok) {
