@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.17)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.21)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.17</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.21</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1314,15 +1314,20 @@
       </div>
 
       <div class="actions-group" style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="addNewSpotifyTrack()"
-          style="font-size:0.82rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#000; font-weight:900; background:#1db954; box-shadow:0 0 16px rgba(29,185,84,0.45);"
-          title="Add a new track card to your class profile">
-          ➕ Add New Track
-        </button>
         <button class="btn btn-outline btn-sm" onclick="exportSpotifyPlaylistModal()"
           style="font-size:0.8rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#1db954; font-weight:800; background:rgba(29,185,84,0.15);"
-          title="Open Class Playlist in Spotify or export Spotify tracklist for instant sharing">
-          🟢 Spotify Class Playlist Link
+          title="Save/open a link to a Spotify playlist you've already made, launch individual track links, or copy a plain-text tracklist to share">
+          🟢 Spotify Playlist Link &amp; Tracklist
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="openSpotifyImportFlow()"
+          style="font-size:0.8rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#1db954; font-weight:800; background:rgba(29,185,84,0.15);"
+          title="Sign in to Spotify and import all tracks from one of your playlists">
+          🟢 Import Spotify Playlist
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="saveClassToSpotify()"
+          style="font-size:0.8rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#000; font-weight:900; background:#1db954;"
+          title="Sign in to Spotify and save this class's tracks as a private playlist in your account">
+          🟢 Save to Spotify
         </button>
         <button class="btn btn-save btn-sm" onclick="saveClassJson()"
           style="font-size:0.72rem; padding:5px 10px; white-space:nowrap;" title="Save class profile JSON file">💾 Save
@@ -1353,10 +1358,6 @@
           style="font-family:'Outfit',sans-serif; font-size:1.15rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
           🛠️ Movement Transitions & Spotify Tracks
         </div>
-        <button class="btn btn-save btn-sm" onclick="addNewSpotifyTrack()"
-          style="background:#1db954; color:#000; font-weight:900; font-size:0.85rem; padding:6px 14px; border-radius:6px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(29,185,84,0.4);">
-          ➕ Add New Track
-        </button>
       </div>
 
       <div class="track-list" id="tracksList"></div>
@@ -1410,7 +1411,7 @@
       <div id="cockpitExportBar" style="display:flex; justify-content:center; align-items:center; margin-bottom:14px;">
         <button class="btn btn-outline" onclick="exportCockpitForPhone()"
           style="background:linear-gradient(135deg, #1db954, #00e5ff); border:none; color:#000; font-weight:900; font-size:0.9rem; padding:10px 28px; border-radius:24px; box-shadow:0 0 20px rgba(29,185,84,0.4); cursor:pointer;"
-          title="Export standalone Mobile Cockpit HTML file to open directly in Safari/Chrome on phone">
+          title="Export standalone Mobile Cockpit HTML file to open directly in Safari/Chrome on phone. Also syncs the class's tracks to Spotify first, if any are linked.">
           ⚡ Export Mobile Cockpit HTML
         </button>
       </div>
@@ -1586,6 +1587,234 @@
   </div>
 
   <script>
+    // Spotify Playlist Import — Authorization Code + PKCE, no client secret.
+    // Only works when opened from SPOTIFY_REDIRECT_URI (Spotify can't redirect
+    // login back to a file:// page), see spotifyImportSupported().
+    const SPOTIFY_CLIENT_ID = '9049e07355e741cdb0ffe87a932115bb';
+    const SPOTIFY_REDIRECT_URI = 'https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html';
+    const SPOTIFY_AUTH_SCOPES = 'playlist-read-private playlist-read-collaborative playlist-modify-private';
+
+    function spotifyImportSupported() {
+      return (window.location.origin + window.location.pathname) === SPOTIFY_REDIRECT_URI;
+    }
+
+    function base64UrlEncode(bytes) {
+      let str = '';
+      for (let i = 0; i < bytes.byteLength; i++) str += String.fromCharCode(bytes[i]);
+      return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function generateSpotifyCodeVerifier() {
+      const bytes = new Uint8Array(64);
+      crypto.getRandomValues(bytes);
+      return base64UrlEncode(bytes);
+    }
+
+    async function generateSpotifyCodeChallenge(verifier) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+      return base64UrlEncode(new Uint8Array(digest));
+    }
+
+    async function beginSpotifyLogin() {
+      if (!spotifyImportSupported()) {
+        showToast('🟢 Playlist import only works from the hosted link: ' + SPOTIFY_REDIRECT_URI);
+        return;
+      }
+      const verifier = generateSpotifyCodeVerifier();
+      sessionStorage.setItem('spotify_pkce_verifier', verifier);
+      const challenge = await generateSpotifyCodeChallenge(verifier);
+      const params = new URLSearchParams({
+        client_id: SPOTIFY_CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: SPOTIFY_REDIRECT_URI,
+        scope: SPOTIFY_AUTH_SCOPES,
+        code_challenge_method: 'S256',
+        code_challenge: challenge
+      });
+      window.location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
+    }
+
+    async function handleSpotifyAuthRedirect() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      if (!code) return;
+      const verifier = sessionStorage.getItem('spotify_pkce_verifier');
+      url.searchParams.delete('code');
+      url.searchParams.delete('state');
+      history.replaceState({}, '', url.toString());
+      if (!verifier) return;
+      try {
+        const res = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: SPOTIFY_REDIRECT_URI,
+            client_id: SPOTIFY_CLIENT_ID,
+            code_verifier: verifier
+          })
+        });
+        const data = await res.json();
+        if (data.access_token) {
+          sessionStorage.setItem('spotify_access_token', data.access_token);
+          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
+          if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
+          showToast('🟢 Signed in to Spotify — pick a playlist to import.');
+          openSpotifyImportModal();
+        } else {
+          showToast('🟢 Spotify sign-in failed: ' + (data.error_description || 'unknown error'));
+        }
+      } catch (e) {
+        console.warn('Spotify token exchange failed:', e);
+        showToast('🟢 Spotify sign-in failed — check your connection and try again.');
+      }
+    }
+
+    async function refreshSpotifyAccessToken() {
+      const refreshToken = sessionStorage.getItem('spotify_refresh_token');
+      if (!refreshToken) return null;
+      try {
+        const res = await fetch('https://accounts.spotify.com/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: SPOTIFY_CLIENT_ID
+          })
+        });
+        const data = await res.json();
+        if (data.access_token) {
+          sessionStorage.setItem('spotify_access_token', data.access_token);
+          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
+          if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
+          return data.access_token;
+        }
+      } catch (e) {
+        console.warn('Spotify token refresh failed:', e);
+      }
+      return null;
+    }
+
+    async function getValidSpotifyAccessToken() {
+      const token = sessionStorage.getItem('spotify_access_token');
+      const expires = Number(sessionStorage.getItem('spotify_token_expires') || 0);
+      if (token && Date.now() < expires) return token;
+      return await refreshSpotifyAccessToken();
+    }
+
+    async function handleSpotifyAuthFailure() {
+      sessionStorage.removeItem('spotify_access_token');
+      sessionStorage.removeItem('spotify_token_expires');
+      sessionStorage.removeItem('spotify_refresh_token');
+      showToast('🟢 Spotify session expired or missing permission — please sign in again.');
+      await beginSpotifyLogin();
+    }
+
+    async function saveClassToSpotify(isRetry) {
+      if (!spotifyImportSupported()) {
+        showToast('🟢 Save to Spotify only works when opened from the hosted link: ' + SPOTIFY_REDIRECT_URI);
+        return false;
+      }
+      const token = await getValidSpotifyAccessToken();
+      if (!token) {
+        beginSpotifyLogin();
+        return 'redirecting';
+      }
+
+      const tracksWithLink = classTracks.filter(t => t && extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
+      const trackUris = tracksWithLink.map(t => 'spotify:track:' + extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
+
+      if (trackUris.length === 0) {
+        showToast('🟢 No tracks have a Spotify link attached yet — nothing to save.');
+        return false;
+      }
+
+      const titleInput = document.getElementById('classTitle');
+      const classTitle = (titleInput && titleInput.value.trim()) || 'Spinning Class';
+
+      showToast('🟢 Saving to Spotify...');
+
+      try {
+        let playlistId = isRetry ? '' : (window.spotifyClassPlaylistId || '');
+
+        if (!playlistId) {
+          const meRes = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + token } });
+          if (meRes.status === 401 || meRes.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          const me = await meRes.json();
+          const createRes = await fetch('https://api.spotify.com/v1/users/' + me.id + '/playlists', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: classTitle, description: 'Created by Spinning Class Builder', public: false })
+          });
+          if (createRes.status === 401 || createRes.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (!createRes.ok) {
+            const errBody = await createRes.json().catch(() => ({}));
+            showToast('🟢 Spotify error creating playlist: ' + (errBody.error && errBody.error.message ? errBody.error.message : createRes.status));
+            return false;
+          }
+          const created = await createRes.json();
+          playlistId = created.id;
+          window.spotifyClassPlaylistId = playlistId;
+          window.spotifyClassPlaylistUrl = (created.external_urls && created.external_urls.spotify) || ('https://open.spotify.com/playlist/' + playlistId);
+        } else {
+          // Reusing an existing playlist — keep its name in sync in case the class was renamed since it was created.
+          const renameRes = await fetch('https://api.spotify.com/v1/playlists/' + playlistId, {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: classTitle })
+          });
+          if (renameRes.status === 401 || renameRes.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          // A 404 here is handled below when the tracks call also 404s — don't duplicate the recovery flow.
+        }
+
+        for (let i = 0; i < trackUris.length; i += 100) {
+          const chunk = trackUris.slice(i, i + 100);
+          const method = i === 0 ? 'PUT' : 'POST';
+          const res = await fetch('https://api.spotify.com/v1/playlists/' + playlistId + '/tracks', {
+            method: method,
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uris: chunk })
+          });
+          if (res.status === 401 || res.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (res.status === 404 && !isRetry) {
+            // Playlist this class was linked to no longer exists (e.g. deleted in Spotify) — start fresh once.
+            window.spotifyClassPlaylistId = '';
+            window.spotifyClassPlaylistUrl = '';
+            return await saveClassToSpotify(true);
+          }
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            showToast('🟢 Spotify error saving tracks: ' + (errBody.error && errBody.error.message ? errBody.error.message : res.status));
+            return false;
+          }
+        }
+
+        autoSave();
+        const skipped = classTracks.filter(t => t).length - trackUris.length;
+        showToast('🟢 Saved ' + trackUris.length + ' track(s) to Spotify!' + (skipped > 0 ? (' (' + skipped + ' track(s) skipped — no Spotify link)') : ''));
+        return true;
+      } catch (e) {
+        console.warn('Save to Spotify failed:', e);
+        showToast('🟢 Save to Spotify failed — check your connection and try again.');
+        return false;
+      }
+    }
+
+    async function openSpotifyImportFlow() {
+      if (!spotifyImportSupported()) {
+        showToast('🟢 Playlist import only works when opened from the hosted link: ' + SPOTIFY_REDIRECT_URI);
+        return;
+      }
+      const token = await getValidSpotifyAccessToken();
+      if (token) {
+        openSpotifyImportModal();
+      } else {
+        beginSpotifyLogin();
+      }
+    }
+
     const MOVEMENT_HAND_POSITIONS = {
       "Seated Flat": "HP 1, 2 or 2.5",
       "Standing Flat / Running": "HP 2 or 2.5",
@@ -1877,7 +2106,9 @@
           title: title,
           instructor: inst,
           energyZone: zone,
-          tracks: sanitizedTracks
+          tracks: sanitizedTracks,
+          spotifyPlaylistUrl: window.spotifyClassPlaylistUrl || '',
+          spotifyPlaylistId: window.spotifyClassPlaylistId || ''
         };
         localStorage.setItem('spinning_course_designer_autosave', JSON.stringify(saveData));
         localStorage.setItem('spinning_class_simple_v4', JSON.stringify(saveData));
@@ -1909,6 +2140,8 @@
               if (loadedTitle && document.getElementById('classTitle')) {
                 document.getElementById('classTitle').value = loadedTitle;
               }
+              window.spotifyClassPlaylistUrl = parsed.spotifyPlaylistUrl || '';
+              window.spotifyClassPlaylistId = parsed.spotifyPlaylistId || '';
             }
           }
         }
@@ -1969,6 +2202,7 @@
       renderTracks();
       updateStats();
       setupDragAndDrop();
+      handleSpotifyAuthRedirect();
 
       audioPlayer.addEventListener('timeupdate', onAudioTimeUpdate);
       audioPlayer.addEventListener('ended', onAudioEnded);
@@ -2208,7 +2442,13 @@
       if (playBtn) playBtn.textContent = isPlaying ? '⏸ Pause Workout' : '► Play Workout';
     }
 
-    function exportCockpitForPhone() {
+    async function exportCockpitForPhone() {
+      const hasSpotifyTracks = classTracks.some(t => t && extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
+      if (hasSpotifyTracks) {
+        showToast('🟢 Syncing Spotify playlist before export...');
+        const syncResult = await saveClassToSpotify();
+        if (syncResult === 'redirecting') return; // navigating to Spotify sign-in; re-click Export after signing in
+      }
       const title = (document.getElementById('classTitle') ? document.getElementById('classTitle').value : 'Spinning Class') || 'Spinning Class Profile';
       const appVer = (document.querySelector('.version-tag') ? document.querySelector('.version-tag').textContent.trim() : 'v4.9.16').split('-')[0].split(' ')[0];
 
@@ -2239,7 +2479,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.17)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.21)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2272,7 +2512,7 @@
       parts.push('</style>\n</head>\n<body>\n');
       parts.push('<div class="cockpit-hud-wrap">\n');
       parts.push('  <div class="cockpit-hud-topbar"><div class="cockpit-hud-classtitle">🚴 ' + title + ' <span style="font-size:0.68rem; color:#1db954; background:rgba(29,185,84,0.15); border:1px solid #1db954; padding:1px 6px; border-radius:4px; margin-left:4px; font-weight:900; vertical-align:middle;">' + appVer + '</span></div><div class="cockpit-total-timer" id="mTotalTimer">⏰ 0:00 / 45:00</div></div>\n');
-      parts.push('  <div id="mStreamingBar" style="width:100%; display:flex; flex-direction:column; gap:6px; margin:4px 0;"></div>\n');
+      parts.push('  <button id="mStartMusicBtn" onclick="startMusic()" style="flex:none; width:100%; box-sizing:border-box; background:#1db954; color:#000; font-family:\'Outfit\',sans-serif; font-weight:900; font-size:0.9rem; padding:10px; border-radius:20px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(29,185,84,0.45); margin:4px 0;">🟢 Start Music</button>\n');
       parts.push('  <div class="cockpit-hud-tracktitle" id="mTrackTitle">Track 1</div>\n');
       parts.push('  <div class="cockpit-hud-artist" id="mTrackArtist">Artist</div>\n');
       parts.push('  <div class="cockpit-hud-metrics">\n');
@@ -2298,14 +2538,14 @@
       parts.push('<' + 'script>\n');
       parts.push('  const classTracks = ' + jsonStr + ';\n');
       parts.push('  const classSpotifyPlaylistUrl = ' + JSON.stringify(window.spotifyClassPlaylistUrl || '') + ';\n');
+      parts.push('  function startMusic() { if (!classSpotifyPlaylistUrl) { alert("No Spotify playlist linked to this class yet — use \\"Save to Spotify\\" or paste a playlist link in the builder first."); return; } window.open(classSpotifyPlaylistUrl, "_blank"); }\n');
       parts.push('  const SYMBOL_ICONS = ' + symbolIconsJson + ';\n');
-      parts.push('  let activeIdx = 0; let audio = new Audio(); let isPlaying = false; let fallbackTimer = null; let curSec = 0; let lastRenderedStreamingIdx = -1; let leadInTimer = null;\n');
+      parts.push('  let activeIdx = 0; let audio = new Audio(); let isPlaying = false; let fallbackTimer = null; let curSec = 0; let leadInTimer = null;\n');
       parts.push('  function playBbcPip(isFinal) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = "sine"; osc.frequency.value = 1000; gain.gain.value = 0.35; osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + (isFinal ? 0.5 : 0.1)); } catch(e){} }\n');
       parts.push('  function startLeadInCountdown(sec) { if (leadInTimer) clearInterval(leadInTimer); let rem = sec || 10; const statusEl = document.getElementById("mStatusText"); leadInTimer = setInterval(() => { if (rem > 0) { if (statusEl) statusEl.textContent = "⏱️ Sync in " + rem + "s... (Hit Play on Spotify!)"; if (rem <= 5) playBbcPip(false); rem--; } else { clearInterval(leadInTimer); leadInTimer = null; playBbcPip(true); if (statusEl) statusEl.textContent = "🚴 GO! Workout Started!"; if (!isPlaying) togglePlay(); } }, 1000); }\n');
       parts.push('  function nudgeTime(delta) { if (audio && audio.src && !isNaN(audio.currentTime)) { audio.currentTime = Math.max(0, audio.currentTime + delta); } else { curSec = Math.max(0, curSec + delta); } render(); }\n');
-      parts.push('  function extractSpotifyId(str) { if (!str) return ""; const s = String(str).trim(); if (/^[a-zA-Z0-9]{22}$/.test(s)) return s; const m = s.match(/track[/:]([a-zA-Z0-9]{22})/); return (m && m[1]) ? m[1] : ""; }\n');
       parts.push('  audio.addEventListener("timeupdate", () => { if (!audio.paused && !isNaN(audio.currentTime) && audio.currentTime > 0) { curSec = audio.currentTime; render(); } });\n');
-      parts.push('  audio.addEventListener("ended", () => { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); render(); } });\n');
+      parts.push('  audio.addEventListener("ended", () => { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); releaseWakeLock(); render(); } });\n');
       parts.push('  function formatCountdown(sec) { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60); const s = sec % 60; return m > 0 ? (s > 0 ? (m + "m " + s + "s") : (m + "m")) : (s + "s"); }\n');
       parts.push('  function render() {\n');
       parts.push('    const t = classTracks[activeIdx] || {};\n');
@@ -2326,7 +2566,6 @@
       parts.push('    document.getElementById("mMetricCadence").textContent = (t.cadence || "--").replace(/\\s*\\(.*\\)/, "").trim();\n');
       parts.push('    document.getElementById("mMetricDuration").textContent = t.duration || "00:00";\n');
       parts.push('    document.getElementById("mCueBox").textContent = t.cues ? ("\\"" + t.cues + "\\"") : "\\"Maintain posture, smooth breathing, and target cadence.\\"";\n');
-      parts.push('    const sBar = document.getElementById("mStreamingBar"); if (sBar && lastRenderedStreamingIdx !== activeIdx) { lastRenderedStreamingIdx = activeIdx; let sBtns = ""; const sId = extractSpotifyId(t.spotifyUrl || t.spotifyTrackId); if (sId) { sBtns += "<div style=\\"width:100%; border-radius:12px; overflow:hidden; border:1px solid #1db954; margin-bottom:4px;\\"><iframe src=\\"https://open.spotify.com/embed/track/" + sId + "?utm_source=generator&theme=0\\" width=\\"100%\\" height=\\"152\\" frameborder=\\"0\\" allowfullscreen=\\"\\" allow=\\"autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture\\" loading=\\"lazy\\"></iframe></div>"; } else if (t.soundcloudUrl) { sBtns += "<div style=\\"width:100%; border-radius:12px; overflow:hidden; border:1px solid #ff5500; margin-bottom:4px;\\"><iframe id=\\"mSoundCloudIframe\\" width=\\"100%\\" height=\\"120\\" scrolling=\\"no\\" frameborder=\\"no\\" allow=\\"autoplay\\" src=\\"https://w.soundcloud.com/player/?url=" + encodeURIComponent(t.soundcloudUrl) + "&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false\\"></iframe></div>"; } const plUrl = classSpotifyPlaylistUrl || "https://open.spotify.com"; sBtns += "<button onclick=\\"window.open(\'" + plUrl + "\', \'_blank\')\\" style=\\"width:100%; padding:12px; background:#1db954; color:#000; font-family:\'Outfit\',sans-serif; font-weight:900; font-size:0.95rem; border-radius:10px; border:none; cursor:pointer; box-shadow:0 0 16px rgba(29,185,84,0.5); margin-top:4px;\\">🟢 Open Class Playlist in Spotify App ➔</button>"; sBar.style.flexDirection = "column"; sBar.innerHTML = sBtns; }\n');
       parts.push('    document.getElementById("mPlayBtn").textContent = isPlaying ? "⏸ Pause Workout" : "► Play Workout";\n');
       parts.push('    const durSec = (audio && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : parseSec(t.duration);\n');
       parts.push('    const cM = Math.floor(curSec / 60); const cS = Math.floor(curSec % 60);\n');
@@ -2347,10 +2586,15 @@
       parts.push('    movs.forEach(m => { const badge = document.createElement("div"); const isActive = (m.name === activeMov.name && m.time === activeMov.time); const isNextFlashing = (nextMov && m.name === nextMov.name && m.time === nextMov.time && (nextTimeSec - curSec) <= 10 && (nextTimeSec - curSec) > 0); badge.className = "cockpit-hud-movbadge " + (isActive ? "active " : "") + (isNextFlashing ? "flash-warning " : ""); const mZone = m.zone || t.zone; const rpeSrc = (m && m.rpe) ? m.rpe : (ZONE_RPE_BADGES[mZone] || ""); const rpeVal = rpeSrc ? rpeSrc.replace(/\\s*\\(.*\\)/, "").trim() : ""; const slotColor = getShade(mZone, rpeVal); const rpeBadge = rpeVal ? "<div style=\\"background:" + slotColor + "25; border:1px solid " + slotColor + "; color:" + slotColor + "; font-size:0.78rem; font-weight:900; letter-spacing:0.5px; padding:1px 6px; border-radius:4px; margin:2px 0; display:inline-block; text-align:center; width:fit-content;\\">" + rpeVal + "</div>" : ""; const iconSrc = SYMBOL_ICONS[m.name] || ""; const imgHtml = iconSrc ? "<div style=\\"background:" + slotColor + "; width:34px; height:34px; border-radius:6px; padding:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid rgba(255,255,255,0.25);\\"><img src=\\"" + iconSrc + "\\" style=\\"max-width:100%; max-height:100%; object-fit:contain;\\" alt=\\"" + m.name + "\\" /></div>" : "<span>🚴</span>"; badge.innerHTML = imgHtml + "<div style=\\"display:flex; flex-direction:column; line-height:1.2; text-align:left; flex:1; min-width:0;\\"><span style=\\"font-weight:800; font-size:0.88rem; color:#fff; white-space:normal; line-height:1.2; word-break:break-word;\\">" + m.name + "</span>" + rpeBadge + "<span style=\\"font-size:0.75rem; color:var(--accent-cyan); font-weight:700;\\">" + (m.time||"0:00") + "</span></div>"; grid.appendChild(badge); });\n');
       parts.push('  }\n');
       parts.push('  function parseSec(tStr) { if (!tStr) return 0; const p = String(tStr).split(":").map(Number); return p.length === 2 ? (p[0]*60 + p[1]) : (p[0]||0); }\n');
-      parts.push('  function togglePlay() { const t = classTracks[activeIdx]; if (!t) return; if (isPlaying) { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; isPlaying = false; if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.pause(); } catch(e){} } render(); } else { isPlaying = true; render(); if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.play(); } catch(e){} } if (t.audioDataUrl) { if (audio.src !== t.audioDataUrl) { audio.src = t.audioDataUrl; } try { audio.currentTime = curSec; const p = audio.play(); if (p !== undefined) p.catch(function(err){}); } catch(e){} } if (!fallbackTimer) { fallbackTimer = setInterval(() => { const currentTrack = classTracks[activeIdx] || {}; const durSec = parseSec(currentTrack.duration) || 10; if (curSec >= durSec) { nextTrack(); } else { curSec++; render(); } }, 1000); } } }\n');
-      parts.push('  function selectTrack(idx) { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; activeIdx = idx; curSec = 0; isPlaying = false; lastRenderedStreamingIdx = -1; togglePlay(); }\n');
+      // Screen Wake Lock: keeps the display on for the duration of the workout.
+      parts.push('  let wakeLock = null;\n');
+      parts.push('  async function requestWakeLock() { if (!("wakeLock" in navigator)) return; try { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } catch (e) {} }\n');
+      parts.push('  function releaseWakeLock() { if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; } }\n');
+      parts.push('  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && isPlaying) requestWakeLock(); });\n');
+      parts.push('  function togglePlay() { const t = classTracks[activeIdx]; if (!t) return; if (isPlaying) { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; isPlaying = false; releaseWakeLock(); if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.pause(); } catch(e){} } render(); } else { isPlaying = true; requestWakeLock(); render(); if (t.soundcloudUrl && window.SC && window.SC.Widget) { try { const widget = SC.Widget(document.getElementById("mSoundCloudIframe")); if (widget) widget.play(); } catch(e){} } if (t.audioDataUrl) { if (audio.src !== t.audioDataUrl) { audio.src = t.audioDataUrl; } try { audio.currentTime = curSec; const p = audio.play(); if (p !== undefined) p.catch(function(err){}); } catch(e){} } if (!fallbackTimer) { fallbackTimer = setInterval(() => { const currentTrack = classTracks[activeIdx] || {}; const durSec = parseSec(currentTrack.duration) || 10; if (curSec >= durSec) { nextTrack(); } else { curSec++; render(); } }, 1000); } } }\n');
+      parts.push('  function selectTrack(idx) { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; activeIdx = idx; curSec = 0; isPlaying = false; togglePlay(); }\n');
       parts.push('  function prevTrack() { selectTrack(Math.max(0, activeIdx - 1)); }\n');
-      parts.push('  function nextTrack() { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); render(); } }\n');
+      parts.push('  function nextTrack() { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); releaseWakeLock(); render(); } }\n');
       parts.push('  function seekAudio(e) { const bg = e.currentTarget; const rect = bg.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; const t = classTracks[activeIdx] || {}; const durSec = (audio && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : parseSec(t.duration); if (durSec > 0) { curSec = pct * durSec; if (audio.src) audio.currentTime = curSec; render(); } }\n');
       parts.push('  render();\n');
       parts.push('<' + '/script>\n</body>\n</html>');
@@ -2358,7 +2602,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.17_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.21_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -3204,9 +3448,9 @@
       return '<span style="color:var(--text-muted); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin-right:2px; white-space:nowrap;">SPINPOWER ZONES:</span>' +
         '<span style="display:inline-flex; align-items:center; gap:4px; color:' + recColor + '; background:' + recColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + recColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + recColor + '; display:inline-block; box-shadow:0 0 4px ' + recColor + ';"></span> Active Recovery (1–3)</span>' +
         '<span style="display:inline-flex; align-items:center; gap:4px; color:' + endColor + '; background:' + endColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + endColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + endColor + '; display:inline-block; box-shadow:0 0 4px ' + endColor + ';"></span> Aerobic Training (3–5)</span>' +
-        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + strColor + '; background:' + strColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + strColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + strColor + '; display:inline-block; box-shadow:0 0 4px ' + strColor + ';"></span> Threshold Training (5–9)</span>' +
-        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + intColor + '; background:' + intColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + intColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + intColor + '; display:inline-block; box-shadow:0 0 4px ' + intColor + ';"></span> Anaerobic Training (4–10)</span>' +
-        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + raceColor + '; background:' + raceColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + raceColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + raceColor + '; display:inline-block; box-shadow:0 0 4px ' + raceColor + ';"></span> Peak Performance (6–10)</span>';
+        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + strColor + '; background:' + strColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + strColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + strColor + '; display:inline-block; box-shadow:0 0 4px ' + strColor + ';"></span> Threshold Training (6–8)</span>' +
+        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + intColor + '; background:' + intColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + intColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + intColor + '; display:inline-block; box-shadow:0 0 4px ' + intColor + ';"></span> Anaerobic Training (8–9)</span>' +
+        '<span style="display:inline-flex; align-items:center; gap:4px; color:' + raceColor + '; background:' + raceColor + '1f; padding:2px 7px; border-radius:12px; border:1px solid ' + raceColor + '4d; white-space:nowrap;"><span style="width:6px; height:6px; border-radius:50%; background:' + raceColor + '; display:inline-block; box-shadow:0 0 4px ' + raceColor + ';"></span> Peak Performance (10)</span>';
     }
 
     function applyColorPalette() {
@@ -3276,8 +3520,8 @@
       'Endurance': [3, 4, 5],
       'Threshold Training': [6, 7, 8],
       'Strength': [6, 7, 8],
-      'Anaerobic Training': [9],
-      'Interval': [9],
+      'Anaerobic Training': [8, 9],
+      'Interval': [8, 9],
       'Peak Performance': [10],
       'Race Day': [10]
     };
@@ -3290,7 +3534,7 @@
       'RPE 5': ['Aerobic Training', 'Endurance'],
       'RPE 6': ['Threshold Training', 'Strength'],
       'RPE 7': ['Threshold Training', 'Strength'],
-      'RPE 8': ['Threshold Training', 'Strength'],
+      'RPE 8': ['Threshold Training', 'Strength', 'Anaerobic Training', 'Interval'],
       'RPE 9': ['Anaerobic Training', 'Interval'],
       'RPE 10': ['Peak Performance', 'Race Day']
     };
@@ -3299,19 +3543,20 @@
     const MOVEMENT_ALLOWED_ZONES = {
       'Warm Up': ['Active Recovery', 'Recovery'],
       'Recovery': ['Active Recovery', 'Recovery'],
-      // Seated Flat covers ALL zones (Karen explicitly confirmed in updated PDF)
-      'Seated Flat': ['Active Recovery', 'Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Recovery', 'Endurance', 'Strength', 'Interval', 'Race Day'],
+      // Seated Flat covers all zones except Peak Performance/Race Day (reserved for Sprints only)
+      'Seated Flat': ['Active Recovery', 'Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Recovery', 'Endurance', 'Strength', 'Interval'],
       // Standing Flat/Running: Interval, Endurance, Strength (Karen added Strength in updated PDF)
       'Standing Flat': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
-      // Running with Resistance = RUNNING ON A HILL: Strength, Interval, Race Day zones (hill movement)
-      'Running with Resistance': ['Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Strength', 'Interval', 'Race Day'],
+      // Running with Resistance = RUNNING ON A HILL: Strength, Interval zones (hill movement); Peak Performance reserved for Sprints
+      'Running with Resistance': ['Threshold Training', 'Anaerobic Training', 'Strength', 'Interval'],
       // Jumps: Endurance, Interval (kept as superset with Strength/Threshold for flexibility)
       'Jumps': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
-      // Jumps on a Hill: Strength, Interval, Race Day — Race Day + Peak Performance added (were missing)
-      'Jumps on a Hill': ['Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Strength', 'Interval', 'Race Day'],
-      // Seated Climb: Endurance, Strength, Interval, Race Day — Interval + Race Day + Peak added (were missing)
-      'Seated Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Endurance', 'Strength', 'Interval', 'Race Day'],
-      'Standing Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Peak Performance', 'Endurance', 'Strength', 'Interval', 'Race Day'],
+      // Jumps on a Hill: Strength, Interval; Peak Performance reserved for Sprints only
+      'Jumps on a Hill': ['Threshold Training', 'Anaerobic Training', 'Strength', 'Interval'],
+      // Seated Climb: Endurance, Strength, Interval; Peak Performance reserved for Sprints only
+      'Seated Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
+      // Peak Performance reserved for Sprints only
+      'Standing Climb': ['Aerobic Training', 'Threshold Training', 'Anaerobic Training', 'Endurance', 'Strength', 'Interval'],
       'Sprints': ['Anaerobic Training', 'Peak Performance', 'Interval', 'Race Day'],
       'Sprints on a Hill': ['Anaerobic Training', 'Peak Performance', 'Interval', 'Race Day']
     };
@@ -4426,6 +4671,145 @@
       showToast('🧹 Spotify link removed');
     }
 
+    let spotifyImportPreviewTracks = [];
+
+    function openSpotifyImportModal() {
+      let modalEl = document.getElementById('spotifyImportModal');
+      if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'spotifyImportModal';
+        modalEl.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); z-index:99999; justify-content:center; align-items:center;';
+        modalEl.innerHTML =
+          '<div style="background:#0f172a; border:1px solid #1db954; border-radius:16px; padding:24px; max-width:560px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 0 30px rgba(29,185,84,0.3); color:#fff; font-family:\'Outfit\',sans-serif;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">' +
+          '<h3 style="margin:0; font-size:1.2rem; color:#1db954; display:flex; align-items:center; gap:8px;">🟢 Import Spotify Playlist</h3>' +
+          '<button onclick="closeSpotifyImportModal()" style="background:none; border:none; color:#aaa; font-size:1.4rem; cursor:pointer;">✕</button>' +
+          '</div>' +
+          '<p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:12px;">Paste a Spotify playlist link (e.g. <code>https://open.spotify.com/playlist/...</code>):</p>' +
+          '<div style="display:flex; gap:10px; margin-bottom:16px;">' +
+          '<input type="text" id="spotifyPlaylistImportInput" style="flex:1; padding:10px 14px; background:rgba(0,0,0,0.5); border:1px solid #1db954; border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; outline:none; box-sizing:border-box;" placeholder="https://open.spotify.com/playlist/..." />' +
+          '<button onclick="loadSpotifyPlaylistPreview()" style="background:#1db954; border:none; color:#000; padding:8px 16px; border-radius:8px; font-weight:900; cursor:pointer; white-space:nowrap;">Fetch</button>' +
+          '</div>' +
+          '<div id="spotifyImportPreviewArea"></div>' +
+          '</div>';
+        document.body.appendChild(modalEl);
+      }
+      document.getElementById('spotifyImportPreviewArea').innerHTML = '';
+      spotifyImportPreviewTracks = [];
+      modalEl.style.display = 'flex';
+      setTimeout(() => { document.getElementById('spotifyPlaylistImportInput').focus(); }, 100);
+    }
+
+    function closeSpotifyImportModal() {
+      const modalEl = document.getElementById('spotifyImportModal');
+      if (modalEl) modalEl.style.display = 'none';
+    }
+
+    function extractSpotifyPlaylistId(urlOrId) {
+      if (!urlOrId) return '';
+      const str = String(urlOrId).trim();
+      if (/^[a-zA-Z0-9]{22}$/.test(str)) return str;
+      const match = str.match(/playlist[/:]([a-zA-Z0-9]{22})/);
+      return (match && match[1]) ? match[1] : '';
+    }
+
+    function msToTrackDuration(ms) {
+      const totalSec = Math.round((ms || 0) / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    async function loadSpotifyPlaylistPreview() {
+      const previewArea = document.getElementById('spotifyImportPreviewArea');
+      const rawInput = document.getElementById('spotifyPlaylistImportInput').value.trim();
+      const playlistId = extractSpotifyPlaylistId(rawInput);
+      if (!playlistId) {
+        previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">Couldn\'t find a playlist ID in that link.</p>';
+        return;
+      }
+      const token = await getValidSpotifyAccessToken();
+      if (!token) {
+        closeSpotifyImportModal();
+        beginSpotifyLogin();
+        return;
+      }
+      previewArea.innerHTML = '<p style="color:#cbd5e1; font-size:0.85rem;">⏳ Loading playlist tracks...</p>';
+      try {
+        const tracks = [];
+        let nextUrl = 'https://api.spotify.com/v1/playlists/' + playlistId + '/tracks?limit=100&fields=next,items(track(name,duration_ms,external_urls,artists(name)))';
+        while (nextUrl) {
+          const res = await fetch(nextUrl, { headers: { Authorization: 'Bearer ' + token } });
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">Spotify error: ' + (errBody.error && errBody.error.message ? errBody.error.message : res.status) + '</p>';
+            return;
+          }
+          const data = await res.json();
+          (data.items || []).forEach(item => {
+            const t = item.track;
+            if (t) {
+              tracks.push({
+                name: t.name || 'Unknown Track',
+                artist: (t.artists || []).map(a => a.name).join(', ') || 'Unknown Artist',
+                duration: msToTrackDuration(t.duration_ms),
+                spotifyUrl: (t.external_urls && t.external_urls.spotify) || ''
+              });
+            }
+          });
+          nextUrl = data.next;
+        }
+        if (tracks.length === 0) {
+          previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">No tracks found in that playlist.</p>';
+          return;
+        }
+        spotifyImportPreviewTracks = tracks;
+        previewArea.innerHTML =
+          '<p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:10px;">Found ' + tracks.length + ' track(s):</p>' +
+          '<div style="max-height:220px; overflow-y:auto; border:1px solid rgba(29,185,84,0.3); border-radius:8px; padding:8px; margin-bottom:16px;">' +
+          tracks.map(t => '<div style="font-size:0.8rem; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.08);">' + t.name + ' — ' + t.artist + ' <span style="color:#94a3b8;">(' + t.duration + ')</span></div>').join('') +
+          '</div>' +
+          '<div style="display:flex; justify-content:flex-end; gap:10px;">' +
+          '<button onclick="confirmSpotifyPlaylistImport()" style="background:#1db954; border:none; color:#000; padding:8px 20px; border-radius:8px; font-weight:900; cursor:pointer;">Add ' + tracks.length + ' Track(s) to Class</button>' +
+          '</div>';
+      } catch (e) {
+        console.warn('Spotify playlist fetch failed:', e);
+        previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">Fetch failed — check your connection and try again.</p>';
+      }
+    }
+
+    function confirmSpotifyPlaylistImport() {
+      if (!spotifyImportPreviewTracks.length) return;
+      spotifyImportPreviewTracks.forEach(pt => {
+        const newIdx = classTracks.length + 1;
+        classTracks.push({
+          id: 't' + newIdx,
+          name: pt.name,
+          artist: pt.artist,
+          bpm: '120',
+          cadence: '60 RPM',
+          duration: pt.duration,
+          zone: 'Strength',
+          rpe: 'RPE 6-7 (Hard)',
+          movements: [
+            { name: 'Seated Flat', time: '0:00', zone: 'Strength', rpe: 'RPE 6-7 (Hard)' },
+            null, null, null, null, null
+          ],
+          cues: '',
+          spotifyUrl: pt.spotifyUrl,
+          spotifyTrackId: extractSpotifyTrackId(pt.spotifyUrl)
+        });
+      });
+      const count = spotifyImportPreviewTracks.length;
+      spotifyImportPreviewTracks = [];
+      closeSpotifyImportModal();
+      renderTracks();
+      autoSave();
+      updateStats();
+      updateProfileCurve();
+      showToast('🟢 Imported ' + count + ' track(s) from Spotify playlist!');
+    }
+
     function openSpotifyTrack(spotifyId) {
       if (!spotifyId) return;
       window.open('https://open.spotify.com/track/' + spotifyId, '_blank');
@@ -4472,7 +4856,7 @@
       modalEl.innerHTML =
         '<div style="background:#0f172a; border:1px solid #1db954; border-radius:16px; padding:24px; max-width:560px; width:90%; box-shadow:0 0 35px rgba(29,185,84,0.35); color:#fff; font-family:\'Outfit\',sans-serif;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">' +
-        '<h3 style="margin:0; font-size:1.2rem; color:#1db954; display:flex; align-items:center; gap:8px;">🟢 Spotify Class Playlist & Exporter</h3>' +
+        '<h3 style="margin:0; font-size:1.2rem; color:#1db954; display:flex; align-items:center; gap:8px;">🟢 Spotify Class Playlist & Tracklist</h3>' +
         '<button onclick="document.getElementById(\'spotifyPlaylistModal\').style.display=\'none\'" style="background:none; border:none; color:#aaa; font-size:1.4rem; cursor:pointer;">✕</button>' +
         '</div>' +
         '<div style="background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.3); border-radius:10px; padding:12px; margin-bottom:14px;">' +
@@ -4783,7 +5167,9 @@
           energyZone: energyZone,
           tracks: classTracks,
           savedAt: new Date().toISOString(),
-          version: 'v4.2-EmbeddedAudioStandard'
+          version: 'v4.2-EmbeddedAudioStandard',
+          spotifyPlaylistUrl: window.spotifyClassPlaylistUrl || '',
+          spotifyPlaylistId: window.spotifyClassPlaylistId || ''
         };
 
         const str = JSON.stringify(data, null, 2);
@@ -4863,6 +5249,8 @@
             loadedTitle = data.title || data.classTitle || data.name || '';
             loadedInstructor = data.instructor || data.instructorName || '';
             loadedZone = data.energyZone || data.primaryZone || data.zone || '';
+            window.spotifyClassPlaylistUrl = data.spotifyPlaylistUrl || '';
+            window.spotifyClassPlaylistId = data.spotifyPlaylistId || '';
           }
 
           if (!loadedTracks && data && typeof data === 'object') {

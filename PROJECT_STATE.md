@@ -3,7 +3,325 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-08-31** — Consolidated to 5 active builders, renamed "Course Designer" → "Class Builder", ported Local's Movement/Zone/RPE validation strategy into spinning_multisource_builder.html and spinning_spotify_builder.html
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.21: version-number correction — the playlist name-sync fix and auto-sync-on-export wiring both shipped under the v4.9.20 label without a further bump; caught when the user asked "are you versioning?"
+
+---
+
+**spinning_spotify_builder.html v4.9.21 (2026-09-05) — Version Bump Catch-Up (No New Code)**
+- User noticed the version badge still read v4.9.20 after two further fixes
+  had already shipped in this same session (the playlist name-sync fix, and
+  wiring auto-sync into "⚡ Export Mobile Cockpit HTML" — both documented
+  below under the v4.9.20 entry, since that's the version they were actually
+  built under). Both should have bumped the version individually per this
+  project's usual same-day-fix convention (see e.g. `8n12_weights_builder.html`
+  v0.4.1/v0.4.2 below) — they didn't, which is what the user caught. This
+  entry is the correction: bumped to v4.9.21 everywhere the version string
+  appears (title, header badge, export script's embedded title, download
+  filename). No functional code changed in this pass.
+- Re-verified esprima (0 errors) after the bump.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.21_AutoSyncOnExport_20260905_102202.html`.
+
+---
+
+**spinning_spotify_builder.html v4.9.20 (2026-09-05) — Save to Spotify (Create/Update Real Playlist) + Exported HUD Simplified to 2 Buttons**
+- Same-session follow-up to v4.9.19's import feature. User tried the actual
+  exported Mobile Cockpit HUD (screenshot) and found the per-track Spotify
+  embed widget (`open.spotify.com/embed/track/...`) genuinely unusable during
+  a live class: it's a separate, disconnected clock from the HUD's own
+  workout timer — no code anywhere wired the two together (confirmed by
+  reading `togglePlay()`/`nextTrack()` in the export generator: they only
+  touch `curSec`/the local `<audio>` element, never the Spotify iframe).
+  Real per-track flow would have required the instructor to manually tap
+  Play inside a new, paused widget every single track, all class, with zero
+  safety net if it drifted — correctly called out as "too chaotic."
+- User's fix, agreed and built: **two buttons total, nothing per-track.**
+  "🎵 Start Music" deep-links once to the class's real Spotify playlist
+  (`open.spotify.com/playlist/{id}`), letting Spotify itself own track-to-
+  track transitions in the background app while the existing "▶ Start
+  Workout"/"⏸ Pause Workout" button (unchanged, was already named this)
+  independently starts the HUD's own cue timer. Confirmed via
+  `AskUserQuestion`: export goes **fully bare** (no per-track text/reference
+  either, not even a passive song-name label) — matches "that's it" literally.
+- This surfaced a second, genuinely new ask: since the builder was already
+  assembling exactly the right structured data (a playlist could be born
+  *from* the class), could it push that list *to* Spotify as a real playlist
+  instead of requiring the instructor to hand-build one first? Yes — reuses
+  the same PKCE login from v4.9.19, extended with one more scope
+  (`playlist-modify-private`, confirmed via `AskUserQuestion` the created
+  playlist should be **Private**).
+- **New `saveClassToSpotify()`** (builder-side, new "💾 Save to Spotify"
+  button next to Import): `GET /v1/me` for the user id, `POST
+  /v1/users/{id}/playlists` (`public:false`) to create **once**, then `PUT
+  .../tracks` (replace, chunked at 100) for every track carrying a Spotify
+  link — re-running the button after edits reuses the stored playlist id and
+  just replaces its contents in place rather than creating duplicates.
+  Self-heals if that stored id 404s (e.g. instructor deleted the playlist
+  directly in Spotify): clears it and creates fresh, once, automatically. Any
+  401/403 (expired token, or an old session that predates the new scope)
+  clears the stored token and re-triggers login. Tracks with no Spotify link
+  attached are silently skipped, with the skip count named in the success
+  toast. `window.spotifyClassPlaylistId`/`spotifyClassPlaylistUrl` (the
+  latter already existed as an unpersisted global — this pass is what first
+  made it survive a reload) now round-trip through `autoSave()`/
+  `loadAutoSave()` **and** `saveClassJson()`/`parseAndLoadJsonFile()`, so the
+  link to "this class's real Spotify playlist" travels with the class data
+  either way it's persisted.
+- **Export generator (`exportCockpitForPhone()`) simplified**: deleted the
+  entire per-track `mStreamingBar` rebuild (the iframe-embed-or-SoundCloud-
+  widget-plus-open-button block, previously re-run on every track change) and
+  its now-dead supporting code (`extractSpotifyId()`, `lastRenderedStreamingIdx`).
+  Replaced with one static button in the markup, `🎵 Start Music`
+  (`id="mStartMusicBtn"`), calling a new top-level `startMusic()` that opens
+  `classSpotifyPlaylistUrl` (already baked in at export time from
+  `window.spotifyClassPlaylistUrl`) in a new tab, or alerts if none is linked
+  yet. Left `togglePlay()`'s pre-existing (already-dead-in-practice, wrapped
+  in try/catch, unrelated to this pass) SoundCloud-widget-control branch
+  alone — it silently no-ops now that `mSoundCloudIframe` no longer exists in
+  the markup, same as it would have for any SoundCloud track before this
+  change since that widget was only ever built inside the now-deleted block.
+- Verified via Python esprima (0 errors, live builder script) and headless
+  Playwright throughout: **Save to Spotify** — mocked `/me` + create +
+  tracks endpoints and confirmed a fresh save's exact call sequence and
+  bodies (`public:false` in the create call, correct `spotify:track:` URIs in
+  the `PUT`), confirmed a second save with a pre-existing playlist id skips
+  creation entirely (only the `PUT` fires), confirmed a 404 on a stale stored
+  id triggers exactly one clean recreate-and-retry ending in a fresh working
+  playlist id, all with zero *thrown* console errors (the 404 case logs the
+  network response itself, which is normal browser behavior unrelated to
+  whether the code handled it — confirmed it did, via the correct final
+  state). **Export**: triggered the real `exportCockpitForPhone()` export
+  (blob intercepted via `expect_download`, saved to a scratch path, not the
+  repo), esprima-validated the generated script standalone (0 errors),
+  confirmed `mStreamingBar`/the embed iframe/`lastRenderedStreamingIdx` are
+  gone from the output, then loaded the exported file fresh in its own page
+  and confirmed clicking "🎵 Start Music" calls `window.open` with the exact
+  linked playlist URL and clicking "▶ Start Workout" still correctly starts
+  the HUD's own timer (label flips to "⏸ Pause Workout") — both independent,
+  as designed, zero console errors.
+- **Not yet done**: `git push` to publish this version to GitHub Pages (both
+  this pass's and v4.9.19's changes are still only local), adding
+  instructors' Spotify accounts to the Development Mode allowlist (max 5),
+  and — new as of this pass — anyone who already signed in under v4.9.19's
+  narrower read-only scope will hit a 401/403 on their first "Save to
+  Spotify" attempt; the code self-heals this into a fresh login prompt
+  automatically, so no dead end, just an extra one-time re-login.
+- **Same-session follow-up**: user tested against a real exported HUD and a
+  real Spotify playlist ("Spinning1") and reported two apparent problems.
+  Both investigated before touching code: (1) the exported HUD still showing
+  the old per-track widget/play-button turned out to be a stale file — its
+  own version badge read v4.9.16, i.e. exported before this session's changes
+  existed, not a regression; re-exporting from the live v4.9.20 builder is
+  the fix (no code issue). (2) The "Spinning1" playlist (5 unrelated tracks,
+  Public) not matching the live "Run the Hill" class (10 tracks) — confirmed
+  via `AskUserQuestion` this playlist predated the "Save to Spotify" button
+  entirely (made by hand / linked earlier), so no bug there either. While
+  investigating #2, did find one genuine gap worth fixing anyway: repeat
+  saves replaced a playlist's tracks but never its name, so renaming the
+  class after the first save would leave the Spotify-side playlist's name
+  stale. Fixed: `saveClassToSpotify()`'s reuse-existing-playlist branch now
+  also issues `PUT /v1/playlists/{id}` with the current class title before
+  replacing tracks. Verified via esprima (0 errors) and Playwright (mocked
+  rename + tracks endpoints, confirmed the rename call fires with the live
+  class title and precedes the tracks call, zero console errors).
+- **Same-session follow-up**: user asked whether "Save to Spotify" should
+  just happen automatically as part of "⚡ Export Mobile Cockpit HTML",
+  rather than being a separate button the instructor has to remember to
+  click before exporting (exactly the failure mode that produced the earlier
+  stale-playlist confusion). Agreed and wired it in: `exportCockpitForPhone()`
+  is now `async` and, only when the class has at least one Spotify-linked
+  track (`classTracks.some(...)`, same check `saveClassToSpotify()` already
+  uses — a class with zero Spotify tracks triggers no network calls, no
+  login prompt, exports exactly as before), awaits
+  `const syncResult = await saveClassToSpotify();` before building the
+  export, so the freshly-created-or-updated playlist URL is what actually
+  gets baked into `classSpotifyPlaylistUrl` for the exported "Start Music"
+  button.
+- **Redirect-safety fix made alongside this**: `saveClassToSpotify()` previously
+  had no way to tell a caller "I'm about to navigate the whole page away to
+  Spotify's login" vs. "I finished" vs. "I failed" — all three fell through
+  to a bare `return`. Since `beginSpotifyLogin()` does a real
+  `window.location.href` navigation, calling it partway through the (now
+  awaited) export could otherwise let `exportCockpitForPhone()` carry on
+  building/downloading the file in the gap before the browser actually
+  unloads. Every exit point now returns a real value —
+  `'redirecting'` (a login/auth-failure redirect was just triggered),
+  `false` (finished, but nothing saved / a Spotify-side error, already
+  toasted), or `true` (saved successfully) — and the export function checks
+  for `'redirecting'` specifically and bails with no file produced in that
+  case (any other outcome lets the export continue regardless, so a
+  transient Spotify hiccup never blocks getting the file needed for class).
+  The existing "💾 Save to Spotify" button's own behavior is unchanged by
+  this — it never inspected the return value in the first place.
+- Verified via Python esprima (0 errors) and headless Playwright, three
+  scenarios: (1) class has Spotify-linked tracks + valid session → confirmed
+  the sync's `/me` → create → tracks calls all complete, the exported file's
+  baked-in `classSpotifyPlaylistUrl` matches the freshly-created playlist,
+  *then* the download fires; (2) same class but no valid session (login
+  redirect requested, the real `accounts.spotify.com` navigation blocked at
+  the network layer for the test) → confirmed **zero** download occurs, i.e.
+  export doesn't silently produce a stale/half-synced file; (3) class with no
+  Spotify-linked tracks at all → confirmed zero Spotify network calls fire
+  and the download proceeds immediately, unchanged from pre-existing
+  behavior. Zero console errors in all three.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.20_AutoSyncOnExport_20260905_102008.html`.
+
+---
+
+**spinning_spotify_builder.html v4.9.19 (2026-09-05) — Spotify Playlist Import via Authorization Code + PKCE**
+- User asked whether the builder could import a Spotify playlist instead of
+  adding/linking every track by hand. It couldn't: the only existing Spotify
+  integration was per-track (`openSpotifyLinkModal`/`saveSpotifyLink`, paste
+  one song link at a time) plus the unauthenticated oEmbed call
+  (`fetchSpotifyTrackMetadata`) that fills in a track's title only — Spotify's
+  oEmbed response has no artist field at all (documented in a comment at that
+  call site already, confirmed against real tracks) — and a separate
+  "🟢 Spotify Class Playlist Link" feature that only stores/opens a pasted
+  playlist URL, never reads its contents.
+- **Real playlist import requires the authenticated Web API**
+  (`GET /v1/playlists/{id}/tracks`), which needs a login flow — worked through
+  the tradeoffs with the user across several turns before building anything:
+  - Client Credentials (app-only token, no login) was the first path
+    considered since it needs no redirect and keeps the file double-click-able,
+    but requires embedding a `client_secret` in a distributed static HTML
+    file — user confirmed this is a genuine Spotify Developer Terms violation
+    (secrets must stay server-side), and flagged plans to potentially scale
+    this beyond one country/one sport, so building on a ToS-violating
+    foundation was rejected in favor of doing it properly.
+  - Settled on **Authorization Code + PKCE** (real Spotify login, no secret
+    needed), which also lifts Client Credentials' "public playlists only"
+    limitation. PKCE requires a real `http(s)` redirect URI — Spotify cannot
+    redirect a login back to a `file://` page — so this feature **only works
+    when the file is opened from its hosted GitHub Pages URL**,
+    `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html`
+    (already pushed there for this to work; must stay in sync with any future
+    edit to this file). Confirmed with the user this scoping is fully
+    reversible: nothing else in the file depends on hosting/login state, so
+    deleting the import feature's code would return the file to being exactly
+    as distributable/double-click-able as the other 5 builders.
+- **Spotify Developer app registered** (user's own account, user
+  `scalpelmtb`): Client ID `9049e07355e741cdb0ffe87a932115bb` embedded as a
+  constant (`SPOTIFY_CLIENT_ID`) — safe to expose, PKCE never uses a secret.
+  App is in **Development Mode**, capped at **5** explicitly-allowlisted
+  Spotify accounts (Dashboard → Settings → User Management — confirmed from
+  the real dashboard screen, correcting an earlier 25-user guess given before
+  the app existed) until/unless a future Extended Quota Mode review is
+  requested — flagged to the user as a real constraint on scaling instructor
+  access, not yet acted on. User has added their own account (1/5) so far.
+- **Implementation** (all new code, isolated from existing functions):
+  `spotifyImportSupported()` gates every entry point on
+  `location.origin + location.pathname` matching the registered redirect URI
+  exactly, showing a toast instead of attempting login when opened locally.
+  `beginSpotifyLogin()` generates a PKCE code verifier/challenge (raw
+  `crypto.subtle.digest('SHA-256', ...)`, no library) and redirects to
+  `accounts.spotify.com/authorize`. `handleSpotifyAuthRedirect()` (called from
+  `init()`) exchanges a returned `?code=` for an access+refresh token pair
+  (`sessionStorage`, not persisted across browser sessions) and strips the
+  code from the URL via `history.replaceState`. `getValidSpotifyAccessToken()`
+  transparently refreshes an expired token. `openSpotifyImportFlow()` (the new
+  button's handler) reuses a valid session or triggers login; once signed in,
+  `loadSpotifyPlaylistPreview()` paginates `/v1/playlists/{id}/tracks` (handles
+  playlists over 100 tracks via the response's `next` link) into a preview
+  list (name/artist/duration), and `confirmSpotifyPlaylistImport()` appends
+  them as new `classTracks` entries (name/artist/duration/spotifyUrl/
+  spotifyTrackId pre-filled, movement slots default same as `addNewTrack()`).
+  Scopes requested: `playlist-read-private playlist-read-collaborative`, so
+  instructors' non-public class playlists work, not just public ones.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  the local-file guard toast fires when opened via `file://` (real behavior
+  today, since Pages hasn't re-deployed this version yet at the time of
+  writing); confirmed `spotifyImportSupported()` correctly returns `false` on
+  `file://`; simulated a signed-in session (token in `sessionStorage`) and
+  intercepted both `accounts.spotify.com`/`api.spotify.com` calls via
+  Playwright route mocks to verify, without hitting the real Spotify API: a
+  2-track playlist imports correctly (name/artist-join/duration-from-ms/link
+  all correct, track count and autosave both advance), and pagination across
+  a mocked 2-page response (`next` followed correctly) merges both pages'
+  tracks before showing the preview — all with zero console errors.
+- **Same-session follow-up**: user was confused by the pre-existing
+  "🟢 Spotify Class Playlist Link" button after seeing the new import button
+  next to it, asking whether it pushed the class's tracklist out to Spotify.
+  It doesn't and never did — `exportSpotifyPlaylistModal()` is one-directional
+  *from* Spotify only (saves/opens a playlist URL you already made yourself,
+  launches individual already-linked tracks, copies a plain-text tracklist to
+  the clipboard) — no API call of any kind. The modal's own heading calling
+  itself "🟢 Spotify Class Playlist & **Exporter**" (mismatched with the
+  button's own "Link" wording) was the real source of the confusion, so
+  renamed rather than just explained: button → "🟢 Spotify Playlist Link &
+  Tracklist", modal heading → "🟢 Spotify Class Playlist & Tracklist", tooltip
+  reworded to describe linking/launching/copying, not exporting. Re-verified
+  esprima (0 errors) and Playwright (renamed button opens the modal, new
+  heading text confirmed present, "Exporter" confirmed gone from the whole
+  page, zero console errors).
+- **Second same-session follow-up**: user noticed 3 separate "➕ Add New
+  Track" buttons once the new import button made the top action row more
+  crowded — top action bar (next to Save/Load/Clear), a second one in the
+  "🛠️ Movement Transitions & Spotify Tracks" section header, and a third
+  auto-appended at the bottom of the rendered track list. Agreed bottom-of-
+  list is the right single location (add-more-once-you've-seen-what's-there
+  is the more standard pattern); removed the top-bar and section-header
+  buttons, kept only the bottom one. The separate empty-state "➕ Add First
+  Track" prompt (shown only when `classTracks.length === 0`) is unrelated and
+  was left alone. `addNewSpotifyTrack` (alias of `addNewTrack`) still has a
+  live call site there, so it wasn't removed as dead code. Re-verified esprima
+  (0 errors) and Playwright: confirmed exactly one "Add New Track" button
+  renders with tracks present (previously 3), confirmed clearing all tracks
+  still shows the empty-state "Add First Track" button, zero console errors.
+- **Not yet done**: `git push` to actually publish this version to GitHub
+  Pages (the redirect URI won't resolve to *this* code until that happens),
+  and adding instructors' Spotify accounts to the app's Development Mode
+  allowlist (max 5 total, user's own account already occupies 1 of them) so
+  login doesn't fail with access denied.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.19_SpotifyPlaylistImportPKCE_20260905_092724.html`.
+
+---
+
+**spinning_singlemix_builder.html v0.4.0 (2026-09-02) — Lightweight Export With On-Phone Attach Page**
+- User asked (after discussing where a SingleMix mix file needs to live to
+  play on a phone) whether the mix MP3 could be re-attached from inside the
+  exported standalone Cockpit HUD itself, rather than only from the full
+  builder. Answer: not by rewriting the exported file (a static HTML file
+  can't save back to itself), but a picker inside the export that loads the
+  file into memory for that session works fine — approved and built.
+- `exportCockpitForPhone(embedAudio)` (still defaults to `true`, unchanged
+  behavior/output for that path) now always generates **two pages** in the
+  exported HTML, toggled by plain `style.display`: `#attachPage` (a
+  centered "📎 Choose Mix MP3" file picker, shown only when the owner
+  track has no baked-in audio) and `#workoutPage` (the existing Cockpit
+  HUD, unchanged markup/logic). A new `ownerHasAudio()` check on load
+  picks which one shows first — an `embedAudio=true` export still opens
+  straight to the workout page exactly as before.
+- Picking a file on the attach page (`handleAttachFile`) does **not**
+  round-trip through base64 — it wires the native `File` directly via
+  `URL.createObjectURL(file)` into a new `owner.__liveBlobUrl`, which
+  `getPlayableAudioSrc()` now checks ahead of `audioDataUrl`. The four
+  existing "is this track really playable" gates
+  (`loadTrackAudio`/`nudgeTime`/`togglePlay`/`seekAudio`, all previously
+  `t.audioDataUrl || t.mixSourceId`) were extended to
+  `|| t.__liveBlobUrl` so the owner track is recognized as playable once
+  attached.
+- **No persistence** — deliberate, first-pass scope confirmed with the
+  user: re-opening the exported file always shows the attach page again if
+  it wasn't exported with audio embedded. `file://` storage behavior
+  (`localStorage`/IndexedDB) is inconsistent enough across mobile browsers
+  (iOS Safari especially) that promising "attach once, remembers next
+  time" wasn't worth the risk without dedicated testing — flagged as a
+  possible follow-up, not built.
+- Added a second export button next to the existing "⚡ Export Mobile
+  Cockpit HTML" (now explicitly `exportCockpitForPhone(true)`): "📎 Export
+  Lightweight (Attach MP3 on Phone)" → `exportCockpitForPhone(false)`. This
+  is the first UI path that ever called the export with `embedAudio =
+  false` — previously that branch of the function existed but was
+  unreachable from any button.
+- Verified via Python esprima (0 errors on both the live builder's script
+  and each of the two exported HTML variants' generated scripts) and
+  headless Playwright: seeded a 2-track mix class, triggered both export
+  variants (blobs intercepted via `expect_download`, not saved to the
+  repo), confirmed the embedded export opens straight to the workout page
+  with zero console errors, confirmed the lightweight export opens on the
+  attach page, and confirmed simulating a real file pick (synthetic
+  `File`+`DataTransfer`+`change` event) switches to the workout page with
+  `audio.src` set to a genuine `blob:` URL and zero console errors.
+- Snapshot: `Backups/spinning_singlemix_builder_v0.4.0_LightweightExportAttachPage_20260902_071021.html`.
 
 ---
 
@@ -11,11 +329,12 @@ Last updated: **2026-08-31** — Consolidated to 5 active builders, renamed "Cou
 
 | File | Role | Version |
 |---|---|---|
-| `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.48 (Local) |
-| `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.46 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source) | v4.9.17 |
-| `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.57 (8n12) |
-| `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.2 (8n12-Weights) |
+| `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
+| `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
+| `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.21 |
+| `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
+| `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
 | `Backups/builder.html` | **ARCHIVED** — was a byte-identical mirror of `spinning_local_builder.html`; consolidated out of root 2026-08-31, no longer maintained/synced | v5.0.48 (Local) at archive time |
 | `Backups/builder_spotify.html`, `Backups/Spinning Class Builder Spotify Edition.html` | **ARCHIVED** — both were byte-identical duplicates of `spinning_spotify_builder.html`; consolidated out of root 2026-08-31 | v4.9.17 at archive time |
@@ -27,6 +346,303 @@ Single-file app: all HTML + CSS + one ~3,100-line inline `<script>` block.
 A single top-level `SyntaxError` kills the whole app, so syntax verification is mandatory.
 
 ## 2. Current version & what shipped
+
+**All 6 active files (2026-09-01) — Screen Wake Lock API in the Exported Mobile Cockpit HUD**
+- User asked: in "the export for mobile use process," keep the phone/tablet
+  screen from dimming or sleeping during a workout — annoying when the
+  display disappears mid-class. Confirmed scope via `AskUserQuestion`: all 6
+  active builders (`spinning_local_builder.html`, `spinning_multisource_builder.html`,
+  `spinning_spotify_builder.html`, `spinning_singlemix_builder.html`,
+  `8n12_builder.html`, `8n12_weights_builder.html`), including the two 8n12
+  files even though they weren't named up front.
+- **Scoped to the exported standalone Mobile Cockpit HUD only** (the
+  `exportCockpitForPhone()` generated script), per the user's explicit "export
+  process" wording — the live builder's own Cockpit tab was left untouched,
+  unlike the earlier Media Session/Bluetooth pass which touched both.
+- Added `requestWakeLock()`/`releaseWakeLock()` (feature-detected via
+  `"wakeLock" in navigator`, silent no-op where unsupported) to each file's
+  generated script, plus a `visibilitychange` listener that reacquires the
+  lock if the tab regains visibility mid-workout — the OS releases a wake
+  lock automatically whenever the tab is hidden (e.g. briefly switching
+  apps), so without this the lock wouldn't resume after the user came back.
+  Wired `requestWakeLock()` into `togglePlay()`'s play branch and
+  `releaseWakeLock()` into its pause branch, plus the class-completion
+  branches of `nextTrack()` and the `audio` `"ended"` listener (same pattern
+  in every file: `isPlaying = false; ... audio.pause(); releaseWakeLock();`).
+  `spinning_spotify_builder.html` had no prior Media Session block to key
+  off (out of scope for that earlier pass) — wake lock was added standalone
+  there, same helper functions, same call sites.
+- Verified via Python esprima (0 errors, all 6 files' main script) and
+  headless Playwright: triggered the real `exportCockpitForPhone(false)`
+  export in every file (intercepted via Playwright's download event, not
+  saved to disk by the app), confirmed the generated HTML's script parses
+  with 0 esprima errors and contains both `requestWakeLock`/`releaseWakeLock`,
+  and confirmed zero console errors loading each exported file fresh.
+- Snapshot: one `Backups/*_ScreenWakeLock_*.html` per file, all timestamped
+  together (`20260901_205338`).
+
+**spinning_local_builder.html v5.0.49 / 8n12_builder.html v5.0.58 / spinning_multisource_builder.html v5.0.47 (2026-09-01) — BPM Changes Now Rescale Duration, Timestamps, and Class Length Everywhere They're Displayed**
+- User asked: for every active builder with a BPM editor, changing a
+  track's BPM should change the track's length, its movement/cue
+  timestamps, and the total class duration accordingly. Investigation
+  found the app already had half of this: `getTrackPlaybackSpeed(track)`
+  (target BPM ÷ `originalBpm`, clamped 0.5x–2.0x) already drove real
+  `audioPlayer.playbackRate`, and `spinning_local_builder.html` alone
+  already divided nominal durations by that ratio for the class total
+  (`updateStats()`) and the Cockpit HUD's elapsed/remaining clocks +
+  next-movement countdown — `8n12_builder.html` and
+  `spinning_multisource_builder.html` had the same speed machinery but
+  never got that division ported. **No file** adjusted the Duration input
+  or individual movement/cue timestamp inputs themselves.
+- **Explicitly out of scope, confirmed with the user along the way**:
+  `spinning_spotify_builder.html` ("Don't do Spotify" — not touched this
+  pass). `spinning_singlemix_builder.html` is correctly excluded by
+  design — its `getTrackPlaybackSpeed()` deliberately forces 1.0x for
+  every mix-linked track (BPM is reference-only there; Karen's shared
+  recording can't be resped per segment). `8n12_weights_builder.html` is
+  correctly excluded — its BPM/tempo UI was fully removed in v0.2.0 (no
+  rendered BPM input anywhere).
+- **Key design constraint surfaced during planning**: `track.duration`
+  and each movement's `.time` aren't cosmetic labels — they're live,
+  user-editable data also used as the content-time denominator for the
+  progress bar, the audio-fallback duration, and cue-firing comparisons
+  against `audioPlayer.currentTime` (always native/content time
+  regardless of `playbackRate`). Overwriting them with wall-clock numbers
+  would silently break that math everywhere they're read back in. Per
+  user's explicit direction: **stored values stay original content-time**
+  (unchanged) — **every displayed** time value converts to wall-clock via
+  new `formatSecAsTime()`/`wallClockTimeStr()`/`contentTimeStrFromWallClock()`
+  helpers (added next to `getTrackPlaybackSpeed()` in each file, plus a
+  matching trio inside each file's `exportCockpitForPhone()` generated
+  script). The Duration input and each movement/cue timestamp input now
+  display wall-clock, converting back to content-time on write
+  (`updateTrackDurationDisplay()`, rewritten `updateSlotTime()`); every
+  read-only display (Overview table, Cockpit metric badge, playhead
+  "0:00 / mm:ss" caption, movement-grid time badges, exported HUD) got the
+  same swap. `updateBpm()` now also refreshes these boxes in place (same
+  pattern it already used for the BPM input/cadence label) so they update
+  live without a full re-render.
+- **New "↺" reinstate-original-BPM button** added next to each track's BPM
+  controls, shown only when `bpm != originalBpm`. Wired to
+  `resetTrackBpm()` — which already existed correctly in all 3 files but
+  had zero call sites (pure dead code, no button anywhere) before this
+  pass.
+- `8n12_builder.html`'s data model differs from Local/Multisource (2 fixed
+  "Cue 1 / Cue 6" timed-cue slots rather than 6 free movement slots, Cue 1
+  locked to 0:00, BPM shown as a plain `bpmVal_` readout rather than a
+  typed input) — same conversion pattern applied, adapted to that shape.
+  Its `renderCockpit()` uses `buildCuePoints()`/`findActiveCuePoint()`
+  instead of a movement array walk, but the same content-time-for-firing /
+  wall-clock-for-display split applies identically.
+- Verified via Python esprima (0 errors, all 3 files) and headless
+  Playwright: seeded a 4:00 track at BPM 120→150 (1.25x), confirmed the
+  Duration box, movement/cue timestamp box, and class total all showed the
+  divided wall-clock value while `classTracks[].duration`/`.time` stayed
+  the original content-time strings; confirmed the reset button appears
+  only once BPM changes and clicking it restores every display; triggered
+  the real `exportCockpitForPhone()` export (blob intercepted, not
+  downloaded), loaded the generated HTML fresh, and confirmed matching
+  wall-clock numbers with zero console errors in both the live builder and
+  the export, across all 3 files.
+- Snapshot: one `Backups/*_BpmWallClockDisplay_*.html` per file.
+- Found and left alone (pre-existing, unrelated): a handful of malformed
+  CSS rule fragments around `spinning_local_builder.html` line 928-936
+  (IDE reports `{ expected` errors there) — present before this session's
+  edits, doesn't affect the inline `<script>` block this pass touched, out
+  of scope for a BPM-focused change.
+
+**spinning_singlemix_builder.html v0.3.0 (2026-09-01) — Fourth Pass: Real Root Cause of "0:00" Start Times, a Self-Inflicted Crash, Whole-Mix Player Time**
+- **Root cause found for a bug that survived several earlier attempted
+  fixes**: user kept seeing every track's slot-1 start time read "0:00"
+  after loading a real class. Added a "Start Time" column to the Overview
+  table (between `#` and `Track & Artist`) to make this diagnosable, which
+  revealed the loaded tracks had **no `mixSourceId` at all** — they were
+  independent, unlinked tracks (from an older save, or one never fully
+  migrated to this builder's model), so each correctly computed its own
+  offset as zero rather than actually being broken. New
+  `enforceSingleMixLinks()` repairs this on every load path (`loadAutoSave`
+  and the Load button): any track after Track 1 missing a `mixSourceId`
+  (or pointing at an id that no longer exists) gets linked to Track 1, then
+  offsets are recomputed from there. This is now the single call both load
+  paths make, replacing the narrower "just recompute offsets" fix from the
+  previous pass, which only fixed already-linked-but-stale data.
+- **Slot 1 is now locked** (previous pass added the field; this pass closed
+  the remaining gaps): `applyTimestampToSlot()` can no longer target index
+  0 via any fallback path (last-focused-slot, first-empty-slot, or the
+  ultimate default), and `selectSymbol()` always recomputes slot 1's time
+  from the track's real `mixOffsetSec` rather than trusting whatever was
+  there before — closes a hole where clearing and re-picking a movement on
+  slot 1 could reset it to 0:00. `openSymbolModal()` also now recomputes
+  and redraws slot 1 the instant its icon is clicked, so the modal always
+  opens on the true current value.
+- **Self-inflicted regression, found and fixed same pass**: de-duplicating
+  the slot-render code in the previous pass accidentally deleted the
+  `zoneColor` variable declaration used by the card's left-edge color
+  stripe, so `renderTracks()` threw on the very first track and silently
+  rendered zero cards (while the track-count stat, read independently,
+  still showed the correct number) — exactly what the user hit after a
+  real mp3 import. Restored the declaration; this class of bug (a
+  behavioral regression a syntax-only check can't catch) is why every pass
+  now re-runs the full Playwright regression immediately after any
+  structural edit, not just an esprima pass.
+- **Mix Audio panel now shows whole-mix time**, not per-song: its time
+  readout, progress fill, and a new dedicated `seekMixAudio()` handler
+  (separate from `seekTrackAudio()`, which the Cockpit's own per-song scrub
+  bar still uses intentionally) all use `audioPlayer.currentTime`/
+  `.duration` directly. Each track's own "Duration" field is unrelated and
+  stays per-song.
+- **Track 1's Name/Artist no longer get overwritten by the imported mix
+  file's ID3/filename** — that identity now only flows to the Profile
+  Title (unconditionally, on every attach/replace, per the prior pass).
+  Track 1's Name/Artist are the first song's own fields, typed in by hand
+  like every other track's.
+- Verified via Python esprima and headless Playwright throughout,
+  including a synthetic "9 independent tracks, no mixSourceId" JSON file
+  built to match the user's actual reported data shape.
+
+**spinning_singlemix_builder.html v0.2.0 (2026-09-01) — Third Feedback Pass: Absolute Timestamps, Field Cleanup, Title-Level Audio dB**
+- **Timestamps are now absolute mix-time everywhere**, not segment-relative:
+  slot 1's default is the cumulative sum of all prior tracks' durations
+  (Track 1 → 0:00, Track 2 → 5:00, Track 3 → 10:00...), staying in sync via
+  `recomputeMixOffsets()` as durations change — but only while a slot is
+  still at its auto-assigned value; a manually-typed timestamp is never
+  overwritten. "⏱️ Use Timestamp" now captures the player's raw
+  `audioPlayer.currentTime` with no offset subtraction. Live builder
+  (`updateBuilderSlotHighlights`), Cockpit HUD (`renderCockpit`, via a new
+  `movMatchSec` kept separate from the segment-relative `curSec` used for
+  the progress bar/clock), and the exported standalone player's duplicated
+  logic were all updated in tandem. The per-segment progress bar/duration
+  readout is unaffected — that's a separate, still-relative display concern.
+- **Defaults**: BPM → 140, Cadence (RPM) re-added as a plain editable field
+  (no more auto-derived "N RPM (Terrain)" text — `updateBpm()` no longer
+  touches cadence at all) defaulting to 70. Attaching/replacing the mix file
+  backfills detected BPM onto tracks still at blank or the untouched 140
+  default, leaving customized ones alone. Slot 1 defaults to Warm Up/RPE 2
+  on Track 1, Recovery/RPE 2 elsewhere; Track 1's default cue is "Steady
+  warmup". `classTitle` now defaults blank and auto-fills from the mix
+  file's ID3 title/filename on attach (only if not already typed).
+- **Removed as redundant**: track-level Cadence/Zone/RPE dropdowns (Zone/RPE
+  are fully handled per-movement now; the fields still exist as inert
+  fallback data, just not editable at the track level), the "SPINNING®
+  MOVEMENTS & TRANSITIONS (UP TO 6)" label, the stale "Cadence Rule: BPM >
+  110 → Half-Time RPM" hint box, the Overview table's Audio dB/Energy
+  Zone/Target RPE columns, and the "🔗 Mix Segment" chip (true for every
+  row by design, so it stopped being informative).
+- **Audio dB moved to the title level**: a single `#overviewAudioDbBox`
+  next to "Print Overview" now shows Track 1's peak loudness (the one real
+  audio file), auto-populated on import — no more per-row column or manual
+  "Scan dB" button (both removed in the prior pass).
+- **Layout**: coaching cues moved into the same row as the track title
+  (cutting each card from 3 rows to 2); RPE and %Effort now sit side by
+  side in each slot box instead of stacked.
+- **%Effort always displays with a trailing "%"** (`resolveEffortPct()`
+  and the exported player's inline equivalent both append one if a
+  manually-typed override omits it) — confirmed it was already surviving
+  `loadAutoSave()`'s normalizer and `saveClassJson()`'s export untouched,
+  since movement objects are passed through those wholesale rather than
+  reconstructed field-by-field.
+- Fixed two stale toast messages still referencing the removed bulk "🎵
+  Select Music Files" button (from the prior pass) with the current
+  "📎 Attach Mix MP3" panel control.
+- Default track count bumped to 9 (previously 2) to match a typical class
+  song count; "➕ Add Track" always appends at the true end of the list,
+  fixed alongside removing a duplicate header-level Add Track button.
+- Verified via Python esprima (main script + a triggered export's
+  generated script, 0 errors each run) and headless Playwright throughout.
+
+**spinning_singlemix_builder.html v0.1.0 (2026-08-31) — New 6th Builder for Premixed Continuous-Audio Classes**
+- User's instructor mixes her own classes into one continuous ~45-minute
+  audio file (loudness/BPM already handled in her mix creation — out of
+  scope here). Forked from `spinning_local_builder.html` rather than
+  touching any of the 3 canonical builders, per user's explicit choice.
+- **Data model**: track objects gain two optional fields — `mixSourceId`
+  (the `id` of the track that actually owns the shared `audioDataUrl`; a
+  follower has none of its own) and `mixOffsetSec` (this segment's start
+  offset into the shared file). Referenced by `id`, not array index, so the
+  link survives `deleteTrack()`/`moveTrack()` reordering. New helpers
+  `mixOwnerIndex()`, `isSameMixGroup()`, `isMixLinkedTrack()` (~line 3045).
+- **UI, revised after first-pass feedback ("looks too much like Local, only
+  need one mp3 load")**: this builder now enforces exactly one audio file
+  for the whole class — Track 1 is always the mix owner; every other track
+  is automatically a segment (no per-track "Attach MP3"/file picker exists
+  below Track 1 at all). A single shared "🎵 Mix Audio" panel sits above the
+  track list (`renderMixAudioPanel()`) with one Play/Pause, scrubber,
+  active-segment label, "⏱️ Use Timestamp", and Attach/Replace control —
+  `attachMixAudio()` auto-creates Track 1 if the list is empty. The header's
+  old bulk "🎵 Select Music" (multi-file → multi-track) and "🔊 Scan dB"
+  buttons were removed, and whole-window audio drag-and-drop now routes
+  through `attachMixAudio()` too, since both bypassed the single-file model.
+  Track cards were stripped of BPM nudge/Tap-Tempo/dB-gain controls (BPM is
+  now a plain reference field — `getTrackPlaybackSpeed()` and the exported
+  player's `getTrackSpeed()` both force `1.0` for any mix-linked track, since
+  the shared file can't actually be sped up per segment) and of per-row
+  play/progress bars. One unified `addTrackOrSegment()` backs every "Add
+  Track" button (header, section, empty-state, bottom) — first track via
+  `addNewTrack()`, every one after via `addMixSegmentTrack(0)`, which no
+  longer requires the owner to already have audio attached. `DEFAULT_TRACKS`
+  was cut from 7 sample songs down to 2 blank "Track 1"/"Track 2" rows to
+  match the "Karen fills it in by hand" workflow.
+- **Bug caught during this pass**: `loadAutoSave()`'s track-normalizer
+  whitelisted a fixed set of fields and silently dropped everything else —
+  including `id`, so `mixSourceId` references broke on every single reload,
+  even a fresh page load with no saved data. Fixed by adding `id`,
+  `mixSourceId`, `mixOffsetSec`, and (for parity with already-existing
+  features whose UI is now hidden) `audioFileName`/`peakDb`/`volumeGain`/
+  `originalBpm`/`detectedBpm`/`customSpeedMultiplier` to what it preserves.
+- `addMixSegmentTrack()` creates a new track after the group with no file
+  picker, just name/duration; offsets auto-recompute
+  (`recomputeMixOffsets()`) whenever a duration in the group changes.
+  `deleteTrack()` promotes the next segment to owner instead of orphaning
+  the group's audio if the owner is deleted.
+- **Playback engine**: `getPlayableAudioSrc()`, `toggleTrackAudio()`,
+  `onAudioTimeUpdate()` (new `maybeAdvanceMixSegment()`),
+  `updateBuilderSlotHighlights()`, `seekTrackAudio()`, and `renderCockpit()`
+  all made mix-aware so a shared file plays through segment boundaries
+  without `audio.src` ever being reassigned — the active track index
+  advances purely from `audioPlayer.currentTime` crossing the next
+  segment's offset, mirroring the pattern the app already used for
+  movement-slot cues within one track. The exported standalone player
+  (`exportCockpitForPhone()`) carries an equivalent hand-rolled copy of the
+  same logic in its generated `<script>` string.
+- **%Effort field**: new `MOVEMENT_DEFAULT_EFFORT_PCT` table sourced from
+  `Docs & Guides/Class Design Quick Reference.jpg`'s Heart Rate Range
+  column, auto-filling a movement-slot's %Effort (editable override) in the
+  Select Movement/Zone/RPE modal; shown in slot cards, the Cockpit HUD
+  movement grid, the Class Overview tooltip, and the exported player.
+- **Known limitation**: mix groups are assumed contiguous in `classTracks`;
+  `moveTrack()` doesn't guard against reordering a segment out of its
+  group. Not fixed — flagged for follow-up if it comes up in practice.
+- **Second feedback pass, same day**: removed the duplicate header-level
+  "Add Track" button (kept the one above the track list + the one at its
+  bottom); `addMixSegmentTrack()` now always inserts at `classTracks.length`
+  instead of walking for the end of the owner's contiguous run, so a new
+  track can never land mid-list if that run is ever broken (and
+  `recomputeMixOffsets()` now walks the whole tail with `continue` instead
+  of stopping at the first non-member track, for the same reason). Removed
+  the track-level Cadence (RPM), Energy Zone, and Target RPE fields — all
+  three are now handled per-movement (the modal already sets Zone/RPE per
+  slot, cadence is implied by the movement chosen); `track.zone`/`track.rpe`
+  still exist as inert fallback data for movements without their own
+  override, just no longer editable at the track level. Removed the
+  "SPINNING® MOVEMENTS & TRANSITIONS (UP TO 6)" label above the slot grid.
+  BPM stays per-track and editable (user's explicit call, not moved to the
+  Mix Audio panel), but attaching/replacing the mix file now backfills that
+  same detected BPM onto every other track in the group whose BPM is still
+  blank, so they start in sync without clobbering any track already
+  customized by hand. `classTitle`'s hardcoded sample default ("Spin 001 -
+  High Energy Endurance") was replaced with a blank field that auto-fills
+  from the mix file's ID3 title/filename on attach — only when the user
+  hasn't already typed a title.
+- Own autosave key (`spinning_singlemix_autosave_v1`) and export filename
+  prefix (`Spinning_SingleMix_`) so it doesn't collide with Local's saves.
+- Verified via Python esprima (both the live builder's script and a
+  triggered export's generated script, 0 errors) and headless Playwright:
+  attached a real audio file, added 2 linked segments, confirmed
+  `audio.src` never changes while `playingAudioTrackIdx`/`activeIdx`
+  advances across both segment boundaries (live builder and the exported
+  HTML both checked), confirmed the Cockpit HUD shows segment-relative
+  time, confirmed the %Effort override/default flow, confirmed the Class
+  Overview table's 🔗 chip.
 
 **spinning_multisource_builder.html v5.0.46 / spinning_spotify_builder.html v4.9.17 (2026-08-31) — Movement/Zone/RPE Validation Strategy Ported From Local; 5-Builder Consolidation; "Course Designer" → "Class Builder" Rename**
 - Three related asks in one session, recorded together. No in-app version
