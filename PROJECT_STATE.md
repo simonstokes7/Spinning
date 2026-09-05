@@ -3,7 +3,50 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.28: "Save to Spotify" now always places a fixed real Spotify track ("Beacon Of Hope - Interlude") as track 1 of the playlist, ahead of the class's own songs, as an audible lead-in the instructor listens for before starting the workout
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.29: retired the legacy local "Start 10s Sync Lead-In" countdown-beep button, replaced with a single "▶ Start Workout" button that jumps straight to the real first track and starts the timer
+
+---
+
+**spinning_spotify_builder.html v4.9.29 (2026-09-05) — Legacy Lead-In Countdown Retired for a Single "Start Workout" Button**
+- Direct follow-up to v4.9.28: with a real Spotify lead-in track now playing
+  through actual Spotify audio, the old local mechanism (`playBbcPip()`
+  synthesizing a 1kHz oscillator beep in the browser tab, driven by
+  `startLeadInCountdown()`'s 10-second `setInterval`) became redundant —
+  user called it out as "legacy" on sight. Proposed and built the
+  replacement: one button that combines "skip past the lead-in" (what
+  "Next" did) and "start the workout timer" (what "Play Workout" did) into
+  a single tap, since the instructor no longer needs a *second*,
+  disconnected local countdown once the real Spotify audio already carries
+  one.
+- New `startWorkoutNow()` in both places this logic lives: the exported
+  HUD (`{ const targetIdx = (classTracks[0] && classTracks[0].isLeadIn) ? 1
+  : 0; selectTrack(targetIdx); }`, reusing `selectTrack()`'s existing
+  jump-then-play behavior) and the live builder's Cockpit tab (equivalent
+  using `activeCockpitTrackIdx`/`startCockpitTimer()`, since that tab has no
+  `selectTrack()` of its own). Both replace the "⏱️ Start 10s Sync Lead-In"
+  button with "▶ Start Workout" in the same slot. `playBbcPip()`,
+  `startLeadInCountdown()`, and the now-unused `leadInTimer` variable were
+  deleted outright (in both the export generator's `parts.push` strings and
+  the live script) rather than left as dead code, confirmed via grep that no
+  other reference to any of the three remained anywhere in the file.
+- Noted along the way: the live builder's Cockpit tab never actually
+  contains an `isLeadIn` track in normal use (confirmed by inspection — that
+  synthetic track is built only inside `exportCockpitForPhone()`'s generated
+  data), so `startWorkoutNow()`'s branch there is presently unreachable in
+  practice and just falls through to its `: 0` default (behaviorally
+  identical to the old code's `startCockpitTimer(0)`, which had the same
+  quiet inertness) — not a regression, just an existing asymmetry between
+  the two surfaces, left as-is since fixing it wasn't in scope here.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  via grep that zero references to `playBbcPip`/`startLeadInCountdown`/
+  `leadInTimer` remain anywhere in the file; triggered a real export and
+  confirmed the old button is gone, the new one is present, and clicking it
+  moves `activeIdx` from `0` (the lead-in) to `1` and starts playback
+  (`isPlaying` true, button label flips to "⏸ Pause Workout") in one tap;
+  separately confirmed the live builder's Cockpit tab button also fires
+  cleanly with no console errors (defaulting to track 0, per the note
+  above, since no lead-in exists there to skip past).
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.29_StartWorkoutButton_20260905_174405.html`.
 
 ---
 
@@ -646,7 +689,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.28: "Save 
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.28 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.29 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.28)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.29)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.28</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.29</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1491,10 +1491,9 @@
             <button class="cockpit-hud-btn" onclick="nextTrack()">Next ▶</button>
           </div>
           <div style="width:100%; margin-top:6px; display:flex; justify-content:center;">
-            <button onclick="startLeadInCountdown(10)"
+            <button onclick="startWorkoutNow()"
               style="width:100%; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:var(--accent-cyan); font-family:'Outfit',sans-serif; font-weight:800; font-size:0.82rem; padding:8px 12px; border-radius:8px; cursor:pointer;"
-              title="Start 10-second countdown to switch apps and sync with Spotify lead-in track">⏱️ Start 10s Sync
-              Lead-In</button>
+              title="Jump straight to the first real track and start the workout timer">▶ Start Workout</button>
           </div>
 
         </div>
@@ -2526,7 +2525,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.28)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.29)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2579,7 +2578,7 @@
       parts.push('    <button class="cockpit-hud-btn" onclick="nextTrack()">Next ▶</button>\n');
       parts.push('  </div>\n');
       parts.push('  <div style="width:100%; margin-top:6px; display:flex; justify-content:center;">\n');
-      parts.push('    <button onclick="startLeadInCountdown(10)" style="width:100%; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:#00e5ff; font-family:\'Outfit\',sans-serif; font-weight:800; font-size:0.8rem; padding:8px 12px; border-radius:8px; cursor:pointer;" title="Start 10-second countdown to switch apps and sync with Spotify lead-in track">⏱️ Start 10s Sync Lead-In</button>\n');
+      parts.push('    <button onclick="startWorkoutNow()" style="width:100%; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:#00e5ff; font-family:\'Outfit\',sans-serif; font-weight:800; font-size:0.8rem; padding:8px 12px; border-radius:8px; cursor:pointer;" title="Jump straight to the first real track and start the workout timer">▶ Start Workout</button>\n');
       parts.push('  </div>\n');
       parts.push('</div>\n');
       parts.push('<' + 'script>\n');
@@ -2587,9 +2586,8 @@
       parts.push('  const classSpotifyPlaylistUrl = ' + JSON.stringify(window.spotifyClassPlaylistUrl || '') + ';\n');
       parts.push('  function startMusic() { if (!classSpotifyPlaylistUrl) { alert("No Spotify playlist linked to this class yet — use \\"Save to Spotify\\" or paste a playlist link in the builder first."); return; } window.open(classSpotifyPlaylistUrl, "_blank"); }\n');
       parts.push('  const SYMBOL_ICONS = ' + symbolIconsJson + ';\n');
-      parts.push('  let activeIdx = 0; let audio = new Audio(); let isPlaying = false; let fallbackTimer = null; let curSec = 0; let leadInTimer = null;\n');
-      parts.push('  function playBbcPip(isFinal) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = "sine"; osc.frequency.value = 1000; gain.gain.value = 0.35; osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime); osc.stop(ctx.currentTime + (isFinal ? 0.5 : 0.1)); } catch(e){} }\n');
-      parts.push('  function startLeadInCountdown(sec) { if (leadInTimer) clearInterval(leadInTimer); let rem = sec || 10; const statusEl = document.getElementById("mStatusText"); leadInTimer = setInterval(() => { if (rem > 0) { if (statusEl) statusEl.textContent = "⏱️ Sync in " + rem + "s... (Hit Play on Spotify!)"; if (rem <= 5) playBbcPip(false); rem--; } else { clearInterval(leadInTimer); leadInTimer = null; playBbcPip(true); if (statusEl) statusEl.textContent = "🚴 GO! Workout Started!"; if (!isPlaying) togglePlay(); } }, 1000); }\n');
+      parts.push('  let activeIdx = 0; let audio = new Audio(); let isPlaying = false; let fallbackTimer = null; let curSec = 0;\n');
+      parts.push('  function startWorkoutNow() { const targetIdx = (classTracks[0] && classTracks[0].isLeadIn) ? 1 : 0; selectTrack(targetIdx); }\n');
       parts.push('  function nudgeTime(delta) { if (audio && audio.src && !isNaN(audio.currentTime)) { audio.currentTime = Math.max(0, audio.currentTime + delta); } else { curSec = Math.max(0, curSec + delta); } render(); }\n');
       parts.push('  audio.addEventListener("timeupdate", () => { if (!audio.paused && !isNaN(audio.currentTime) && audio.currentTime > 0) { curSec = audio.currentTime; render(); } });\n');
       parts.push('  audio.addEventListener("ended", () => { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); releaseWakeLock(); render(); } });\n');
@@ -2649,7 +2647,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.28_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.29_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2792,42 +2790,13 @@
     let isCockpitTimerRunning = false;
     let cockpitTimerInterval = null;
     let cockpitElapsedSec = 0;
-    let leadInTimer = null;
-
-    function playBbcPip(isFinal = false) {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = 1000;
-        gain.gain.value = 0.35;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + (isFinal ? 0.5 : 0.1));
-      } catch (e) { }
-    }
-
-    function startLeadInCountdown(sec = 10) {
-      if (leadInTimer) clearInterval(leadInTimer);
-      let rem = sec;
-      const statusEl = document.getElementById('cockpitStatusText');
-      showToast('⏱️ Starting ' + sec + 's Sync Lead-In! Listen for BBC Pips (Pip... Pip... BEEP!)');
-
-      leadInTimer = setInterval(() => {
-        if (rem > 0) {
-          if (statusEl) statusEl.textContent = '⏱️ Sync in ' + rem + 's... (Hit Play on Spotify!)';
-          if (rem <= 5) playBbcPip(false);
-          rem--;
-        } else {
-          clearInterval(leadInTimer);
-          leadInTimer = null;
-          playBbcPip(true);
-          if (statusEl) statusEl.textContent = '🚴 GO! Workout Started!';
-          if (!isCockpitTimerRunning) startCockpitTimer(0);
-        }
-      }, 1000);
+    function startWorkoutNow() {
+      const targetIdx = (classTracks[0] && classTracks[0].isLeadIn) ? 1 : 0;
+      cockpitElapsedSec = 0;
+      activeCockpitTrackIdx = targetIdx;
+      if (isCockpitTimerRunning) pauseCockpitTimer();
+      startCockpitTimer(targetIdx);
+      renderCockpit();
     }
 
     function nudgeCockpitTime(secDelta) {
