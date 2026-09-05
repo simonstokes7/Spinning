@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.24)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.25)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.24</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.25</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1670,7 +1670,8 @@
         const data = await res.json();
         if (data.access_token) {
           sessionStorage.setItem('spotify_access_token', data.access_token);
-          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
+          const expiresInSec = (Number(data.expires_in) > 0) ? Number(data.expires_in) : 3600;
+          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (expiresInSec * 1000) - 60000));
           if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
           sessionStorage.removeItem('spotify_last_login_attempt');
           const pendingAction = sessionStorage.getItem('spotify_pending_action') || 'import';
@@ -1710,7 +1711,8 @@
         const data = await res.json();
         if (data.access_token) {
           sessionStorage.setItem('spotify_access_token', data.access_token);
-          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
+          const expiresInSec = (Number(data.expires_in) > 0) ? Number(data.expires_in) : 3600;
+          sessionStorage.setItem('spotify_token_expires', String(Date.now() + (expiresInSec * 1000) - 60000));
           if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
           return data.access_token;
         }
@@ -1727,11 +1729,11 @@
       return await refreshSpotifyAccessToken();
     }
 
-    async function handleSpotifyAuthFailure() {
+    async function handleSpotifyAuthFailure(source) {
       sessionStorage.removeItem('spotify_access_token');
       sessionStorage.removeItem('spotify_token_expires');
       sessionStorage.removeItem('spotify_refresh_token');
-      showToast('🟢 Spotify session expired or missing permission — please sign in again.');
+      showToast('🟢 [diag: 401-B-' + (source || '?') + '] Spotify session expired or missing permission — please sign in again.');
       await beginSpotifyLogin();
     }
 
@@ -1743,6 +1745,7 @@
       }
       const token = await getValidSpotifyAccessToken();
       if (!token) {
+        showToast('🟢 [diag: no-token-A] Not signed in to Spotify yet — signing in...');
         beginSpotifyLogin();
         return 'redirecting';
       }
@@ -1765,14 +1768,14 @@
 
         if (!playlistId) {
           const meRes = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + token } });
-          if (meRes.status === 401 || meRes.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (meRes.status === 401 || meRes.status === 403) { await handleSpotifyAuthFailure('me'); return 'redirecting'; }
           const me = await meRes.json();
           const createRes = await fetch('https://api.spotify.com/v1/users/' + me.id + '/playlists', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: classTitle, description: 'Created by Spinning Class Builder', public: false })
           });
-          if (createRes.status === 401 || createRes.status === 403) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (createRes.status === 401 || createRes.status === 403) { await handleSpotifyAuthFailure('create'); return 'redirecting'; }
           if (!createRes.ok) {
             const errBody = await createRes.json().catch(() => ({}));
             showToast('🟢 Spotify error creating playlist: ' + (errBody.error && errBody.error.message ? errBody.error.message : createRes.status));
@@ -1789,10 +1792,11 @@
             headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: classTitle })
           });
-          if (renameRes.status === 401) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (renameRes.status === 401) { await handleSpotifyAuthFailure('rename'); return 'redirecting'; }
           if ((renameRes.status === 403 || renameRes.status === 404) && !isRetry) {
             // The linked playlist isn't writable (wrong account, unowned, or deleted) —
             // re-login can't fix that. Stop reusing it and create a fresh one instead.
+            showToast('🟢 [diag: recreate-E-rename-' + renameRes.status + '] Linked playlist not writable — creating a new one...');
             window.spotifyClassPlaylistId = '';
             window.spotifyClassPlaylistUrl = '';
             return await saveClassToSpotify(true, resumeAs);
@@ -1807,9 +1811,10 @@
             headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uris: chunk })
           });
-          if (res.status === 401) { await handleSpotifyAuthFailure(); return 'redirecting'; }
+          if (res.status === 401) { await handleSpotifyAuthFailure('tracks'); return 'redirecting'; }
           if ((res.status === 403 || res.status === 404) && !isRetry) {
             // Same recovery as above: an unwritable/deleted playlist, not an auth problem — start fresh once.
+            showToast('🟢 [diag: recreate-E-tracks-' + res.status + '] Linked playlist not writable — creating a new one...');
             window.spotifyClassPlaylistId = '';
             window.spotifyClassPlaylistUrl = '';
             return await saveClassToSpotify(true, resumeAs);
@@ -1842,6 +1847,7 @@
       if (token) {
         openSpotifyImportModal();
       } else {
+        showToast('🟢 [diag: no-token-C] Not signed in to Spotify yet — signing in...');
         beginSpotifyLogin();
       }
     }
@@ -2510,7 +2516,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.24)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.25)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2633,7 +2639,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.24_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.25_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -4761,6 +4767,7 @@
       }
       const token = await getValidSpotifyAccessToken();
       if (!token) {
+        showToast('🟢 [diag: no-token-D] Not signed in to Spotify yet — signing in...');
         closeSpotifyImportModal();
         beginSpotifyLogin();
         return;

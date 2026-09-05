@@ -3,7 +3,55 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.24: found the likely real cause of the sign-in loop — a linked playlist the account can't write to was being treated as an auth failure; now 403 on that specific resource recreates a fresh playlist instead of relogging in
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.25: v4.9.24's fix didn't stop the loop either — added a NaN-expiry defensive guard plus tagged diagnostic toasts at every possible redirect trigger, since the exact cause still isn't confirmed
+
+---
+
+**spinning_spotify_builder.html v4.9.25 (2026-09-05) — NaN-Expiry Guard + Tagged Diagnostic Toasts (Loop Still Unresolved)**
+- User reported the sign-in loop persisting even after v4.9.24's fix, which
+  had specifically targeted "403 on a stale linked playlist" as the cause.
+  Since that targeted fix didn't hold either, stopped guessing at a single
+  root cause and instead: (1) closed one concrete, independently-worth-fixing
+  gap found while re-reading the token-storage code, and (2) instrumented
+  every possible redirect-trigger point with a distinct, tagged toast, so
+  the next occurrence identifies exactly which check is firing repeatedly
+  instead of requiring another guess.
+- **NaN-expiry guard**: `handleSpotifyAuthRedirect()` and
+  `refreshSpotifyAccessToken()` both computed the stored token-expiry
+  timestamp as `Date.now() + (data.expires_in * 1000) - 60000` with no
+  validation of `data.expires_in`. If that field were ever missing or
+  non-numeric in Spotify's response, the result is `NaN`, and
+  `Date.now() < NaN` is **always false** — meaning a freshly-issued, fully
+  valid token would look expired the instant it's stored, forcing
+  `getValidSpotifyAccessToken()` to treat it as unusable immediately after a
+  "successful" login. Both call sites now clamp to a sane 3600s default
+  when `Number(data.expires_in)` isn't a positive number. Verified via
+  Playwright: fed a token response missing `expires_in` entirely and
+  confirmed the stored expiry is a real future timestamp (not `NaN`) and
+  `getValidSpotifyAccessToken()` correctly returns the token instead of
+  treating it as expired.
+- **Tagged diagnostic toasts** at every one of the (now) seven distinct
+  places that can lead to a Spotify redirect or a playlist-recreate:
+  `saveClassToSpotify`'s own "not signed in yet" check (`no-token-A`),
+  `handleSpotifyAuthFailure` (`401-B-<source>`, now parameterized so `me`/
+  `create`/`rename`/`tracks` 401s are distinguishable from each other rather
+  than sharing one generic message), `openSpotifyImportFlow`'s equivalent
+  check (`no-token-C`), `loadSpotifyPlaylistPreview`'s equivalent
+  (`no-token-D`), and the two 403/404 playlist-recreate branches added in
+  v4.9.24 (`recreate-E-rename-<status>` / `recreate-E-tracks-<status>`).
+  None of this changes behavior — every branch does exactly what it did
+  before — it just makes the *next* report legible: whatever tag(s) appear
+  in the toast sequence when it loops again point at the exact line
+  responsible, rather than requiring another round of hypothesis-and-ship.
+- Re-verified esprima (0 errors) and the existing 403-recreate Playwright
+  regression still passes unchanged (recreates a fresh playlist and
+  succeeds, now also showing its diagnostic tag in the toast).
+- **Honest status**: the actual root cause of the user's loop is still
+  unconfirmed. Two targeted theories (stale scope reuse, stale/unwritable
+  linked playlist) have each been fixed but neither stopped it. The
+  diagnostic tags are the plan for closing that gap on the next report
+  rather than continuing to guess blind.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.25_NaNExpiryGuardAndDiagToasts_20260905_142929.html`.
 
 ---
 
@@ -476,7 +524,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.24: found 
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.24 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.25 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
