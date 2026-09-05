@@ -3,7 +3,38 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.30: removed the fake "lead-in" pseudo-track (and its embedded 1.17MB pips WAV) from the export entirely; exported HUD now opens on a true 2-button screen (Start Music / Start Workout) before revealing the real HUD; also fixed a long-standing bug where the exported version badge always showed a stale hardcoded fallback
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.31: pre-start screen's two buttons now vertically centered instead of stranded at the top of an empty page; pressing Prev on the first track returns to that pre-start screen as an undo for an accidental Start Workout tap
+
+---
+
+**spinning_spotify_builder.html v4.9.31 (2026-09-05) — Centered Pre-Start Screen + Prev-as-Undo**
+- Immediate same-session follow-up to v4.9.30's two-button pre-start screen:
+  user tried it live and flagged two things. (1) The two buttons sat
+  stranded at the top of the page with a large empty void below — `#mHudBody`
+  being `display:none` left `.cockpit-hud-wrap`'s `justify-content:
+  flex-start` with nothing to fill the `min-height:100vh` space. (2) No way
+  to undo an accidental "Start Workout" tap — pressing Prev on the first
+  track just re-selected the same track (`Math.max(0, activeIdx-1)` clamps
+  to 0), doing nothing visible.
+- **Centering fix**: wrapped the two buttons in a new `#mPreStartButtons`
+  container (`flex:1; display:flex; flex-direction:column;
+  justify-content:center;`) so it grows to fill the space below the top bar
+  and centers the buttons within it — `startWorkoutNow()` now also collapses
+  this wrapper (`flex:none; justify-content:flex-start`) once the real HUD
+  takes over the vertical space, so the two don't fight over it.
+- **Prev-as-undo**: new `goBackToPreStart()` — stops playback/timer
+  (`audio.pause()`, clears `fallbackTimer`, releases the wake lock), resets
+  `activeIdx`/`curSec`, re-hides `#mHudBody`, re-shows `#mStartWorkoutBtn`,
+  and re-centers `#mPreStartButtons`. `prevTrack()` now calls this instead
+  of clamping when `activeIdx === 0` — pressing Prev on the very first
+  track is a full return to the pre-start screen, not a no-op.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  the wrapper's computed `flexGrow`/`justifyContent` before start (1/center),
+  after Start Workout (0/flex-start), and after Prev-from-track-0 (back to
+  1/center); confirmed Prev from track 0 correctly hides `#mHudBody`, shows
+  `#mStartWorkoutBtn`, and resets `isPlaying`/`activeIdx`. Zero console
+  errors.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.31_CenteredPreStartAndPrevBack_20260905_180804.html`.
 
 ---
 
@@ -749,7 +780,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.30: remove
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.30 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.31 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
