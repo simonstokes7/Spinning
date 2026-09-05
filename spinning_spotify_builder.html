@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.33)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.34)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.33</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.34</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -2511,7 +2511,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.33)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.34)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2635,7 +2635,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.33_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.34_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -4769,7 +4769,16 @@
           nextUrl = data.next;
         }
         if (tracks.length === 0) {
-          previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">No tracks found in that playlist.</p>';
+          const diagUrl = 'https://api.spotify.com/v1/playlists/' + playlistId + '/items?limit=3';
+          let diagJson = '(diagnostic fetch failed)';
+          try {
+            const diagRes = await fetch(diagUrl, { headers: { Authorization: 'Bearer ' + token } });
+            const diagData = await diagRes.json();
+            diagJson = JSON.stringify(diagData, null, 2);
+          } catch (diagErr) { }
+          const escaped = diagJson.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          previewArea.innerHTML = '<p style="color:#ff5252; font-size:0.85rem;">No tracks found in that playlist. Raw API response (first 3 items, no field filter) below — please screenshot/copy this for debugging:</p>' +
+            '<pre style="background:#000; color:#0f0; font-size:0.65rem; padding:8px; border-radius:6px; max-height:300px; overflow:auto; white-space:pre-wrap; word-break:break-all; user-select:text;">' + escaped + '</pre>';
           return;
         }
         spotifyImportPreviewTracks = tracks;
