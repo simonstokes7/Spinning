@@ -3,7 +3,33 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.25: v4.9.24's fix didn't stop the loop either — added a NaN-expiry defensive guard plus tagged diagnostic toasts at every possible redirect trigger, since the exact cause still isn't confirmed
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.26: user couldn't read v4.9.25's diagnostic toasts before the redirect fired — swapped all seven to blocking `alert()`s (temporary debug aid) so they must be read/dismissed before anything proceeds
+
+---
+
+**spinning_spotify_builder.html v4.9.26 (2026-09-05) — Diagnostic Toasts → Blocking Alerts (Still Debugging the Loop)**
+- User confirmed the v4.9.25 diagnostic toasts existed but were unreadable —
+  "too fast to see" — since a toast auto-hides after 3s and, more to the
+  point, the page navigates away to Spotify (or proceeds to the next step)
+  essentially immediately after showing it, well before a human can read
+  it. Toasts are non-blocking by design; nothing about them pauses
+  execution.
+- Fixed by swapping all seven `[diag: ...]`-tagged messages (the six from
+  v4.9.25 plus the circuit breaker's own message, newly tagged
+  `circuit-breaker-F`) from `showToast(...)` to `alert(...)`. `alert()` is
+  synchronous and blocking — it halts all further script execution
+  (including any pending `window.location.href` redirect) until the user
+  clicks OK, guaranteeing the message is seen and can be read or copied
+  before anything else happens. Explicitly a temporary debug device, not a
+  permanent UX choice — flagged as such in-conversation and here, to be
+  stripped back to toasts once the actual cause is caught.
+- Verified via Python esprima (0 errors) and headless Playwright (attached
+  a dialog handler to auto-accept and capture the message text, confirmed
+  the circuit-breaker alert fires with its tag intact and zero errors).
+- **Still the same open question as v4.9.25**: which exact tag fires, and in
+  what sequence, is what's needed from the user's next attempt to actually
+  identify the cause.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.26_BlockingDiagAlerts_20260905_160539.html`.
 
 ---
 
@@ -524,7 +550,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.25: v4.9.2
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.25 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.26 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
