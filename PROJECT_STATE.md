@@ -3,7 +3,67 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.29: retired the legacy local "Start 10s Sync Lead-In" countdown-beep button, replaced with a single "▶ Start Workout" button that jumps straight to the real first track and starts the timer
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.30: removed the fake "lead-in" pseudo-track (and its embedded 1.17MB pips WAV) from the export entirely; exported HUD now opens on a true 2-button screen (Start Music / Start Workout) before revealing the real HUD; also fixed a long-standing bug where the exported version badge always showed a stale hardcoded fallback
+
+---
+
+**spinning_spotify_builder.html v4.9.30 (2026-09-05) — Removed Fake Lead-In Track; True 2-Button Pre-Start Screen; Version Badge Bug Fixed**
+- User flagged, correctly, that the exported HUD still didn't match "just 2
+  buttons" — the lead-in screen (from v4.9.19-era `exportCockpitForPhone()`)
+  still showed a full HUD's worth of placeholder clutter (stats, scrubber,
+  movement card, cue text, Prev/Play/Next) around the new buttons, all
+  displaying meaningless values ("Track 0/9", "Setup/Rest", "00:10") for a
+  synthetic pseudo-track that was never a real song. Then, mid-turn:
+  "Remove the pips embed completely!" — pointing at the actual data-model
+  root of the clutter: a hardcoded `leadInTrack` object
+  (`exportCockpitForPhone()`, prepended to every exported class's track
+  array) whose `audioDataUrl` field was a **1,176,107-character base64 WAV**
+  of the BBC pips, baked into literally every single export. Confirmed via
+  `wc -l`/file size before and after: removing it dropped the file from
+  ~1.49MB to ~317KB — that one field was the majority of the file's weight.
+- Deleted the entire `leadInTrack` object and its `[leadInTrack,
+  ...userTracks]` prepend — `exportTracks` is now just `userTracks`
+  unmodified, so the class's real first song is genuinely track 1 with no
+  synthetic entry ahead of it. The various pre-existing `t.isLeadIn`-
+  conditioned branches elsewhere in the render/stats logic (track-count
+  math, wall-clock-vs-lead-in-seconds, status text) were left untouched
+  rather than stripped out — since `isLeadIn` can now never be true, they
+  silently and correctly always take their non-lead-in branch, with no
+  further changes needed.
+- **New true pre-start screen**: wrapped everything below the two buttons
+  (track title/artist, metrics grid, scrubber row, progress bar, movement
+  grid, cue box, Prev/Play/Next row) in a single `#mHudBody` container,
+  hidden (`display:none`) until `startWorkoutNow()` runs. That function
+  (already added in v4.9.29, now simplified — no more `isLeadIn` branch
+  needed since index 0 is always the real first track) reveals `#mHudBody`,
+  hides the now-redundant `#mStartWorkoutBtn`, and starts playback on track
+  0. Before that tap, the page genuinely renders as just the top bar plus
+  "🟢 Start Music" and "▶ Start Workout" — nothing else.
+- **Separately caught and fixed while investigating**: the user noticed a
+  fresh export still showing a stale version badge. Root cause: three
+  separate places in the code (`exportSpotifyPlaylistModal()`'s tracklist
+  export, `exportCockpitForPhone()`'s embedded title/badge, `saveClassJson()`'s
+  filename) all read the current version via
+  `document.querySelector('.version-tag')` — but the real header badge has
+  always used class `.version-badge`, not `.version-tag` (confirmed via
+  grep: `.version-tag` matched nothing in the actual HTML, only a CSS rule
+  with no element using it). Every one of these had been silently falling
+  back to a hardcoded stale default (`'v4.9.16'` twice, `'v4.9.07'` once)
+  since whenever they were first written — meaning **every export ever made
+  by this file has shown the wrong version**, unrelated to which version
+  actually produced it. Fixed by correcting the selector to `.version-badge`
+  in all three places.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  file size dropped as expected after removing the embedded WAV; triggered
+  a real export and confirmed its badge now correctly reads the live
+  version (v4.9.29 at the time of that specific check, before this pass's
+  own bump) instead of a stale fallback; confirmed the pre-start screen's
+  visible text is *only* the top bar plus the two buttons (no "Track 0/9",
+  no "Setup/Rest," nothing else), confirmed clicking "Start Workout" reveals
+  the full HUD with correct real data (`"The Answer"`, `"1 / 7"` — not
+  `"1 / 8"`, confirming no off-by-one from the removed fake track) and
+  starts playback (`isPlaying: true`). Zero console errors.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.30_RemovePipsEmbedTwoButtonScreen_20260905_175701.html`.
 
 ---
 
@@ -689,7 +749,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.29: retire
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.29 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.30 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
