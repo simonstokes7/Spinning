@@ -3,7 +3,59 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.22: fixed the post-login redirect always reopening the Import modal regardless of which action (Import/Save/Export) actually triggered sign-in
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.23: user hit a real Spotify sign-in redirect loop ("session expired" repeating, had to close the tab) — added a circuit breaker plus `show_dialog=true` on every login
+
+---
+
+**spinning_spotify_builder.html v4.9.23 (2026-09-05) — Spotify Sign-In Redirect Loop Circuit Breaker**
+- User reported hitting a real, disruptive loop live on the deployed site:
+  a "session expired" message kept repeating and they had to close the tab
+  to escape it. Root cause not fully isolated with certainty — the likely
+  candidate is Spotify silently reusing an older, narrower scope grant from
+  before `playlist-modify-private` was added (v4.9.20) rather than
+  re-prompting for the new permission, causing every write call to 401/403
+  even immediately after a "successful" re-login, which `handleSpotifyAuthFailure()`
+  would then send straight back through `beginSpotifyLogin()` again with no
+  circuit breaker — but rather than assert that as fact without being able
+  to observe the real network traffic, the fix makes the failure mode safe
+  regardless of the exact trigger.
+- **`show_dialog=true`** added to every `/authorize` call — forces Spotify to
+  always show its consent screen rather than potentially silently reusing a
+  stale prior grant, making a scope/permission mismatch visible to the user
+  instead of failing invisibly.
+- **Circuit breaker in `beginSpotifyLogin()`**: a `spotify_last_login_attempt`
+  timestamp in `sessionStorage`, checked before every redirect. A second
+  login attempt within 15 seconds of the last one — the signature of a loop,
+  not a normal fresh sign-in — is blocked outright: no navigation, the
+  pending-action tag is cleared (so a stale intent can't quietly resume into
+  something confusing), and a clear diagnostic toast points at the most
+  likely fix (checking the Development Mode user allowlist) instead of
+  bouncing back to Spotify again. Cleared on a genuinely successful token
+  exchange so a legitimate future re-login isn't wrongly treated as a loop.
+  This protects all three entry points (Import, Save to Spotify, export's
+  auto-sync, and any 401/403 hit mid-flow) since they all funnel through
+  this one function to reach Spotify's login.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  a normal login attempt still navigates correctly with both `show_dialog=true`
+  and the full scope string present in the constructed URL; confirmed a
+  second attempt within the 15s window produces **zero** navigation attempts,
+  shows the breaker's toast, and clears the pending-action tag — with the
+  page's own JS state left intact (an earlier test draft that aborted a real
+  navigation via Playwright's route interception corrupted the page context
+  entirely, `ReferenceError: beginSpotifyLogin is not defined` afterward,
+  confirming `window.location.href` assignment is a real top-level
+  navigation attempt even when the resulting request is blocked — switched
+  to seeding `sessionStorage` directly to simulate "an attempt just
+  happened" rather than actually triggering and aborting one). Zero console
+  errors.
+- **Still not fully diagnosed**: whether the root cause really was the scope-
+  reuse theory above, since it couldn't be directly observed. If the user
+  hits this again even with `show_dialog=true` forcing a fresh consent
+  screen each time, that would rule out stale-scope-reuse and point at
+  something else (e.g. a genuine backend issue on a specific endpoint) —
+  worth capturing the exact toast sequence and, if possible, the network
+  tab's actual 401/403 response body if it recurs.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.23_AuthLoopBreaker_20260905_110053.html`.
 
 ---
 
@@ -380,7 +432,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.22: fixed 
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.22 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.23 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

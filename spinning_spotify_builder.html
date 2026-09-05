@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.22)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.23)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.22</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.23</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1620,6 +1620,17 @@
         showToast('🟢 Playlist import only works from the hosted link: ' + SPOTIFY_REDIRECT_URI);
         return;
       }
+      // Circuit breaker: if we're about to redirect to Spotify again within
+      // seconds of the last attempt, something (an unresolvable scope/permission
+      // problem, a broken refresh token, etc.) is bouncing us back and forth —
+      // stop instead of looping the user through Spotify's login repeatedly.
+      const lastAttempt = Number(sessionStorage.getItem('spotify_last_login_attempt') || 0);
+      if (Date.now() - lastAttempt < 15000) {
+        sessionStorage.removeItem('spotify_pending_action');
+        showToast('🟢 Spotify keeps rejecting sign-in — check this app is added under Development Mode → User Management in your Spotify Developer Dashboard, then try again in a moment.');
+        return;
+      }
+      sessionStorage.setItem('spotify_last_login_attempt', String(Date.now()));
       const verifier = generateSpotifyCodeVerifier();
       sessionStorage.setItem('spotify_pkce_verifier', verifier);
       const challenge = await generateSpotifyCodeChallenge(verifier);
@@ -1629,7 +1640,8 @@
         redirect_uri: SPOTIFY_REDIRECT_URI,
         scope: SPOTIFY_AUTH_SCOPES,
         code_challenge_method: 'S256',
-        code_challenge: challenge
+        code_challenge: challenge,
+        show_dialog: 'true'
       });
       window.location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
     }
@@ -1660,6 +1672,7 @@
           sessionStorage.setItem('spotify_access_token', data.access_token);
           sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
           if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
+          sessionStorage.removeItem('spotify_last_login_attempt');
           const pendingAction = sessionStorage.getItem('spotify_pending_action') || 'import';
           sessionStorage.removeItem('spotify_pending_action');
           if (pendingAction === 'save') {
@@ -2491,7 +2504,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.22)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.23)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2614,7 +2627,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.22_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.23_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
