@@ -3,7 +3,34 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.34: v4.9.33's item/track field fix didn't resolve the "No tracks found" import bug either — added a raw-API-response diagnostic dump instead of guessing a third time blind
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.35: widened the pre-start button gap again (20px → 40px, user still felt them too close); also resolved and closed out the Import "No tracks found" investigation — see below, it was a stale-cache false alarm, not a real bug, and a genuine "Forbidden" case was confirmed as expected Spotify platform behavior (playlist not owned/collaborated)
+
+---
+
+**spinning_spotify_builder.html v4.9.35 (2026-09-06) — Button Gap Widened Again; Import Investigation Closed Out**
+- **Import "No tracks found" — resolved, turned out not to be a bug**: after
+  v4.9.34's raw-diagnostic instrumentation shipped, user retested the same
+  "Spinning1" playlist (confirmed owned by their account) and it worked
+  correctly — all 5 real tracks found with correct names/artists/durations.
+  Since v4.9.34 didn't change any parsing logic (diagnostic-only, added
+  after the parsing code), this confirms v4.9.33's `item`/`track` field fix
+  was actually correct all along; the earlier failures were most likely a
+  stale cached page from before that fix had fully loaded, not a genuine
+  ongoing bug. No further action needed on this thread. Separately, the
+  same session surfaced a real, expected, non-bug: importing a *different*
+  playlist not owned by the user correctly returned `403 Forbidden` — user
+  confirmed that playlist wasn't theirs, matching the documented Feb 2026
+  restriction that the `/items` endpoint only works for playlists owned or
+  collaborated on. Both threads closed with the actual mechanism understood
+  rather than left as an open mystery.
+- **Button gap**: still "too close together" per the user even after
+  v4.9.32's bump to 20px — widened `#mPreStartButtons`'s gap to `40px`.
+  Confirmed via a real Playwright screenshot (1085×829, matching the
+  aspect ratio of the user's own screenshot) that the two buttons now have
+  clear, obvious separation and remain correctly centered in the available
+  space.
+- Verified via Python esprima (0 errors).
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.35_WiderButtonGap_20260906_074757.html`.
 
 ---
 
@@ -871,7 +898,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.34: v4.9.3
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.34 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.35 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
