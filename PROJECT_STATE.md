@@ -3,7 +3,51 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.23: user hit a real Spotify sign-in redirect loop ("session expired" repeating, had to close the tab) — added a circuit breaker plus `show_dialog=true` on every login
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.24: found the likely real cause of the sign-in loop — a linked playlist the account can't write to was being treated as an auth failure; now 403 on that specific resource recreates a fresh playlist instead of relogging in
+
+---
+
+**spinning_spotify_builder.html v4.9.24 (2026-09-05) — Stale/Unwritable Linked Playlist No Longer Misdiagnosed as Auth Failure**
+- v4.9.23's `show_dialog=true` fix didn't hold: user reported clicking Agree,
+  landing back on the builder "for a second," then being asked to Agree
+  again — i.e. re-authenticating with the full permission set still didn't
+  stop the loop. That ruled out the stale-scope-reuse theory from v4.9.23
+  (if scope were the problem, a fresh full-consent login would have fixed
+  it) and pointed at something a relogin structurally cannot fix: Spotify
+  returns the same 403 status for "your token is bad" and "you don't have
+  permission to touch this specific resource" — and `saveClassToSpotify()`
+  treated both identically as "please relogin." If `window.spotifyClassPlaylistId`
+  (persisted across reloads since v4.9.20) referenced a playlist this
+  account can't write to — wrong account, unowned, some other mismatch — no
+  amount of re-authenticating could ever succeed against it, so every
+  attempt would 403 again immediately after a "successful" fresh login,
+  exactly matching the reported symptom.
+- Fixed by no longer conflating the two: the **rename** call (`PUT
+  /v1/playlists/{id}`) and the **tracks** call (`PUT`/`POST .../tracks`) —
+  both only ever used on the *reuse-an-existing-linked-playlist* branch —
+  now treat `401` as a genuine auth failure (relogin, as before) but `403`
+  (grouped with the existing `404` deleted-playlist case, since both mean
+  "this specific playlist isn't usable") as a signal to stop reusing that
+  playlist ID and create a fresh one instead, exactly like the existing
+  404-recovery path. Left the **create-playlist** call's `401`/`403`
+  handling as pure auth-failure — a 403 there means the token itself lacks
+  the scope to create a playlist under your own account, which a relogin
+  genuinely can fix, unlike a resource-ownership mismatch on an existing id.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  a `403` on the rename call for an existing linked playlist now creates a
+  fresh playlist and successfully writes tracks to it, with **zero**
+  navigation to Spotify's login — directly disproving what the old code did
+  (redirect); confirmed a genuine `401` on the same call still correctly
+  triggers the real re-login redirect, so that legitimate case wasn't
+  broken. Zero *thrown* console errors in both cases (the 403/401 network
+  responses themselves are logged by the browser regardless, same benign
+  pattern noted in earlier passes).
+- **Still can't be 100% certain** this was the exact mechanism without
+  seeing the user's real network response bodies, but it's the most
+  concrete, evidence-fitting explanation found so far, and the fix is safe
+  and correct regardless: a resource-level 403 should never have triggered
+  a relogin in the first place.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.24_StalePlaylist403Recovery_20260905_110954.html`.
 
 ---
 
@@ -432,7 +476,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.23: user h
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.23 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.24 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
