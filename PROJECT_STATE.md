@@ -3,7 +3,38 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.31: pre-start screen's two buttons now vertically centered instead of stranded at the top of an empty page; pressing Prev on the first track returns to that pre-start screen as an undo for an accidental Start Workout tap
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.32: found via direct CSS diff against `spinning_local_builder.html` that this file was never brought up to the "roomier" topbar standard the other builders received in an earlier pass — fixed, plus widened the gap between the two pre-start buttons
+
+---
+
+**spinning_spotify_builder.html v4.9.32 (2026-09-05) — Topbar Spacing Parity With Other Builders + Wider Button Gap**
+- User reported the top bar's title/version "looked clipped" and the whole
+  workout page "looked sparse" compared to other versions, and asked to
+  space out the two pre-start buttons. Rather than guess at CSS values,
+  extracted and diffed all 22 shared `.cockpit-*`/`.main-play` export CSS
+  rules between this file and `spinning_local_builder.html` (the reference
+  lineage) programmatically — found exactly 3 genuine differences, all
+  explaining the report precisely: `.cockpit-hud-topbar` (Spotify:
+  `padding:6px 12px; font-size:0.82rem; border-radius:8px` vs Local's
+  roomier `8px 16px; 0.88rem; 10px`), `.cockpit-total-timer` (Spotify:
+  `padding:3px 8px` plus an extra `font-size:0.8rem` Local doesn't have, vs
+  Local's `3px 10px` with no override), and `.cockpit-hud-controls`
+  (Spotify missing Local's `margin-bottom:6px`). This is the same "Exported
+  HUD Top-Bar Spacing Fix" documented earlier in this file's history for
+  `8n12_builder.html`/`8n12_weights_builder.html` (2026-08-29) —
+  `spinning_spotify_builder.html` was apparently out of scope for that pass
+  (predates most of this file's Spotify-specific work) and never received
+  the same update. Fixed all three to match Local exactly.
+- **Button gap**: `#mPreStartButtons`' gap (added in v4.9.30/31) widened
+  from `8px` to `20px` for clearer separation between "Start Music" and
+  "Start Workout".
+- Verified via Python esprima (0 errors) and a script that re-diffs all 22
+  shared CSS rules against `spinning_local_builder.html` — confirmed **zero**
+  remaining differences (full parity). Also took real Playwright screenshots
+  of both the pre-start and post-Start-Workout screens at a 400×800
+  viewport to visually confirm the fix — topbar has proper breathing room,
+  buttons are clearly separated, matching the other builders' look.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.32_TopbarSpacingParityAndButtonGap_20260905_181809.html`.
 
 ---
 
@@ -780,7 +811,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.31: pre-st
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.31 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.32 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

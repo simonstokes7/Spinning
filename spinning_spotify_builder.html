@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.31)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.32)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.31</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.32</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -2511,7 +2511,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.31)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.32)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2519,9 +2519,9 @@
       parts.push('* { box-sizing:border-box; margin:0; padding:0; }\n');
       parts.push('html, body { background: #090c15; color: #fff; font-family: "Outfit", sans-serif; min-height: 100vh; width: 100vw; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; }\n');
       parts.push('.cockpit-hud-wrap { width: 100%; max-width: 480px; min-height: 100vh; background: #090c15; padding: 10px 12px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; margin: 0 auto; }\n');
-      parts.push('.cockpit-hud-topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 0.82rem; }\n');
+      parts.push('.cockpit-hud-topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; font-size: 0.88rem; }\n');
       parts.push('.cockpit-hud-classtitle { font-family: "Outfit", sans-serif; font-weight: 800; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60%; }\n');
-      parts.push('.cockpit-total-timer { background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.4); color: var(--accent-cyan); font-family: "Outfit", sans-serif; font-weight: 800; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; }\n');
+      parts.push('.cockpit-total-timer { background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.4); color: var(--accent-cyan); font-family: "Outfit", sans-serif; font-weight: 800; padding: 3px 10px; border-radius: 6px; }\n');
       parts.push('.cockpit-hud-tracktitle { font-family: "Outfit", sans-serif; font-size: 1.4rem; font-weight: 900; line-height: 1.15; color: #fff; text-align: center; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }\n');
       parts.push('.cockpit-hud-artist { font-size: 0.9rem; color: var(--text-muted); text-align: center; margin-top: 1px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }\n');
       parts.push('.cockpit-hud-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 100%; margin: 2px 0; }\n');
@@ -2538,13 +2538,13 @@
       parts.push('.cockpit-hud-movbadge.flash-warning { animation: slowRedGlow 2.0s ease-in-out infinite alternate !important; border-color: #ff1744 !important; }\n');
       parts.push('@keyframes slowRedGlow { 0% { background: rgba(255,23,68,0.15); border-color: rgba(255,23,68,0.5); box-shadow: 0 0 8px rgba(255,23,68,0.4); } 50% { background: rgba(255,23,68,0.4); border-color: #ff1744; box-shadow: 0 0 22px rgba(255,23,68,0.95); transform: scale(1.03); } 100% { background: rgba(255,23,68,0.15); border-color: rgba(255,23,68,0.5); box-shadow: 0 0 8px rgba(255,23,68,0.4); } }\n');
       parts.push('.cockpit-hud-cuebox { width: 100%; background: rgba(0, 229, 255, 0.06); border: 1px solid rgba(0, 229, 255, 0.25); border-left: 4px solid var(--accent-cyan); border-radius: 8px; padding: 12px 14px; font-family: "Inter", sans-serif; font-size: 0.95rem; line-height: 1.4; color: #f1f5f9; text-align: center; font-style: italic; font-weight: 500; min-height: 48px; display: flex; align-items: center; justify-content: center; overflow: hidden; }\n');
-      parts.push('.cockpit-hud-controls { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 2px; }\n');
+      parts.push('.cockpit-hud-controls { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 2px; margin-bottom: 6px; }\n');
       parts.push('.cockpit-hud-btn { flex: 1; padding: 10px; font-family: "Outfit", sans-serif; font-size: 0.9rem; font-weight: 800; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; }\n');
       parts.push('.cockpit-hud-btn.main-play { flex: 2; background: linear-gradient(135deg, var(--accent-cyan), #00b0ff); color: #0b132b; border: none; box-shadow: 0 4px 18px rgba(0, 229, 255, 0.4); font-size: 1rem; font-weight: 900; padding: 10px 12px; border-radius: 8px; }\n');
       parts.push('</style>\n</head>\n<body>\n');
       parts.push('<div class="cockpit-hud-wrap">\n');
       parts.push('  <div class="cockpit-hud-topbar"><div class="cockpit-hud-classtitle">🚴 ' + title + ' <span style="font-size:0.68rem; color:#1db954; background:rgba(29,185,84,0.15); border:1px solid #1db954; padding:1px 6px; border-radius:4px; margin-left:4px; font-weight:900; vertical-align:middle;">' + appVer + '</span></div><div class="cockpit-total-timer" id="mTotalTimer">⏰ 0:00 / 45:00</div></div>\n');
-      parts.push('  <div id="mPreStartButtons" style="flex:1; width:100%; display:flex; flex-direction:column; justify-content:center; gap:8px;">\n');
+      parts.push('  <div id="mPreStartButtons" style="flex:1; width:100%; display:flex; flex-direction:column; justify-content:center; gap:20px;">\n');
       parts.push('  <button id="mStartMusicBtn" onclick="startMusic()" style="flex:none; width:100%; box-sizing:border-box; background:#1db954; color:#000; font-family:\'Outfit\',sans-serif; font-weight:900; font-size:0.9rem; padding:10px; border-radius:20px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(29,185,84,0.45); margin:4px 0;">🟢 Start Music</button>\n');
       parts.push('  <button id="mStartWorkoutBtn" onclick="startWorkoutNow()" style="flex:none; width:100%; box-sizing:border-box; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:#00e5ff; font-family:\'Outfit\',sans-serif; font-weight:800; font-size:0.9rem; padding:10px; border-radius:20px; cursor:pointer;">▶ Start Workout</button>\n');
       parts.push('  </div>\n');
@@ -2635,7 +2635,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.31_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.32_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
