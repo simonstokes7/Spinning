@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.27)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.28)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.27</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.28</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1593,6 +1593,11 @@
     const SPOTIFY_CLIENT_ID = '9049e07355e741cdb0ffe87a932115bb';
     const SPOTIFY_REDIRECT_URI = 'https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html';
     const SPOTIFY_AUTH_SCOPES = 'playlist-read-private playlist-read-collaborative playlist-modify-private';
+    // "Beacon Of Hope - Interlude" — always placed as track 1 of the Spotify
+    // playlist (never shown in the workout/HUD track list): the instructor
+    // hits Start Music, this plays first, and once it ends into the real
+    // first class song they press Play Workout to start the HUD in sync.
+    const SPOTIFY_PREVIEW_TRACK_ID = '5tl3hb6hZkPNAwrrV9NswE';
 
     function spotifyImportSupported() {
       return (window.location.origin + window.location.pathname) === SPOTIFY_REDIRECT_URI;
@@ -1751,12 +1756,16 @@
       }
 
       const tracksWithLink = classTracks.filter(t => t && extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
-      const trackUris = tracksWithLink.map(t => 'spotify:track:' + extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
+      const classTrackUris = tracksWithLink.map(t => 'spotify:track:' + extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
 
-      if (trackUris.length === 0) {
+      if (classTrackUris.length === 0) {
         showToast('🟢 No tracks have a Spotify link attached yet — nothing to save.');
         return false;
       }
+
+      // The preview lead-in always leads the real Spotify playlist, never
+      // the workout's own track list/numbering.
+      const trackUris = ['spotify:track:' + SPOTIFY_PREVIEW_TRACK_ID].concat(classTrackUris);
 
       const titleInput = document.getElementById('classTitle');
       const classTitle = (titleInput && titleInput.value.trim()) || 'Spinning Class';
@@ -1828,8 +1837,8 @@
         }
 
         autoSave();
-        const skipped = classTracks.filter(t => t).length - trackUris.length;
-        showToast('🟢 Saved ' + trackUris.length + ' track(s) to Spotify!' + (skipped > 0 ? (' (' + skipped + ' track(s) skipped — no Spotify link)') : ''));
+        const skipped = classTracks.filter(t => t).length - classTrackUris.length;
+        showToast('🟢 Saved ' + classTrackUris.length + ' class track(s) + preview lead-in to Spotify!' + (skipped > 0 ? (' (' + skipped + ' track(s) skipped — no Spotify link)') : ''));
         return true;
       } catch (e) {
         console.warn('Save to Spotify failed:', e);
@@ -2517,7 +2526,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.27)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.28)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2640,7 +2649,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.27_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.28_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

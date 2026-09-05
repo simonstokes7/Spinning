@@ -3,7 +3,55 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.27: found the real cause via the diagnostic alerts — Spotify's Feb 2026 Dev Mode migration deprecated the playlist-creation and tracks endpoints this code was calling; switched to the current ones
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.28: "Save to Spotify" now always places a fixed real Spotify track ("Beacon Of Hope - Interlude") as track 1 of the playlist, ahead of the class's own songs, as an audible lead-in the instructor listens for before starting the workout
+
+---
+
+**spinning_spotify_builder.html v4.9.28 (2026-09-05) — Real Spotify Preview/Lead-In Track Always Leads the Playlist**
+- Follow-up to the v4.9.19–27 Spotify work, once the auth loop was actually
+  fixed and the user could use the feature for real: the exported HUD's
+  synced start had been "hit Play on Spotify, then use a local synthesized
+  countdown beep in the browser" (pre-existing `playBbcPip()`/"Start 10s
+  Sync Lead-In" mechanism) — two independent audio sources with no real
+  timing relationship. User wanted the *actual Spotify audio itself* to
+  carry a brief lead-in before the real class songs, so hitting "Start
+  Music" plays something first, and the instructor presses "Play Workout"
+  by ear once that ends and the real first song begins — one shared,
+  audible sync point instead of two disconnected clocks.
+- **Real constraint surfaced along the way**: Spotify's Playlist API can
+  only reference tracks already in Spotify's own catalog — there is no
+  upload path for personal/custom audio (not the repo's own
+  `00_BBC_Pips_Sync_LeadIn.wav`, not a YouTube clip, not an Envato Elements
+  purchase). The only way to get personal audio onto Spotify at all is
+  through a music distributor (DistroKid/Amuse/RouteNote/etc., days-long
+  turnaround, and — flagged for the user — actually distributing a literal
+  recording of the real BBC Greenwich Time Signal would be a copyright
+  problem, since it's the BBC's content, not a license to redistribute).
+  Searched for an existing suitable catalog track (BBC pips itself isn't
+  published on Spotify as a standalone track; sound-effect-library
+  countdown clips found via search were all "bomb timer"-themed, rejected
+  by the user as tonally wrong) before the user found their own candidate.
+- User supplied a real link: **"Beacon Of Hope - Interlude"**
+  (`open.spotify.com/track/5tl3hb6hZkPNAwrrV9NswE`, confirmed via Spotify's
+  oEmbed). New `SPOTIFY_PREVIEW_TRACK_ID` constant; `saveClassToSpotify()`
+  now always prepends `spotify:track:<that id>` ahead of the class's own
+  linked tracks when building the array sent to Spotify — **only in the
+  real Spotify playlist**, never added to `classTracks`, so the workout
+  builder's own track list, numbering, and HUD cue-timeline are completely
+  unaffected (matches the user's original framing: "we need it in the
+  Spotify playlist, not the workout"). Success toast and the "N tracks
+  skipped — no Spotify link" count both adjusted to count class tracks only
+  (not the always-present preview track), so the messaging stays accurate.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  the preview track's URI is always first in the array actually sent to
+  Spotify regardless of how many/which class tracks are linked, confirmed
+  `classTracks` itself (length, track 1's identity) is completely untouched
+  by this, and confirmed the toast's track count and skip count are
+  correct. Zero console errors.
+- **Not yet decided**: whether to also retire the old local "Start 10s Sync
+  Lead-In" countdown-beep button now that a real-audio alternative exists —
+  raised with the user, not yet resolved either way.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.28_SpotifyPreviewLeadInTrack_20260905_173410.html`.
 
 ---
 
@@ -598,7 +646,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.27: found 
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.27 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.28 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
