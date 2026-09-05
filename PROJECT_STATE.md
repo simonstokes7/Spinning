@@ -3,9 +3,57 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.21: version-number correction — the playlist name-sync fix and auto-sync-on-export wiring both shipped under the v4.9.20 label without a further bump; caught when the user asked "are you versioning?"
+Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.22: fixed the post-login redirect always reopening the Import modal regardless of which action (Import/Save/Export) actually triggered sign-in
 
 ---
+
+**spinning_spotify_builder.html v4.9.22 (2026-09-05) — Post-Login Redirect Resumes the Action That Triggered It**
+- User hit this live, for real, on the freshly-deployed Pages site: clicked
+  "⚡ Export Mobile Cockpit HTML" while not signed in, went through the real
+  Spotify consent screen, clicked Agree — and landed back on the **Import**
+  modal instead of getting their export. Root cause: `handleSpotifyAuthRedirect()`
+  (added in v4.9.19, when Import was the only thing that ever called
+  `beginSpotifyLogin()`) unconditionally opened the import modal after any
+  successful token exchange. v4.9.20/21 added two more callers of the same
+  login path — "Save to Spotify" and export's auto-sync — but the redirect
+  handler never learned to tell them apart.
+- Fixed with a `sessionStorage` intent tag set by whichever action is about
+  to (possibly) trigger a login redirect, read once by
+  `handleSpotifyAuthRedirect()` and cleared immediately: `openSpotifyImportFlow()`
+  sets `'import'`; `saveClassToSpotify(isRetry, resumeAs)` gained a second
+  parameter and sets `resumeAs || 'save'` as its very first line (covers both
+  its own direct "no token yet" check and any 401/403 hit deeper in the
+  Me/create/rename/tracks calls, and survives its own 404-recovery retry by
+  passing `resumeAs` through); `exportCockpitForPhone()` calls
+  `saveClassToSpotify(false, 'export')` instead of the bare call. On
+  successful token exchange, the redirect handler now reads the tag and
+  calls `saveClassToSpotify()` (for `'save'`), `exportCockpitForPhone()` (for
+  `'export'`), or `openSpotifyImportModal()` (default/`'import'`) —
+  re-running the actual action from the top rather than leaving the user
+  stranded on the wrong screen.
+- Verified via Python esprima (0 errors) and headless Playwright: for each
+  of the three intents, seeded `sessionStorage` (verifier + pending-action
+  tag) via `add_init_script` so it's in place before the page's own
+  `init()`/`handleSpotifyAuthRedirect()` fires naturally on load (an earlier
+  test draft that instead called `handleSpotifyAuthRedirect()` manually after
+  load was a dead end — the automatic on-load call had already consumed and
+  stripped the `?code=` param by then, so the manual call silently no-opped;
+  switching to seeding state before a real navigation exercises the actual
+  end-to-end path instead), mocked `accounts.spotify.com/api/token` to
+  return a valid token, and confirmed: `'import'` opens the import modal
+  (element created, `display:flex`); `'save'` does **not** create the import
+  modal and its own distinctive "only works from the hosted link" toast
+  proves `saveClassToSpotify()` itself ran (this test happened to hit that
+  particular one of its guards rather than reaching Spotify — the
+  interesting confirmation is *which function* produced the message, not
+  which of its internal branches fired); `'export'` triggers a real file
+  download with zero further interaction needed. Zero console errors across
+  all three.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.22_AuthRedirectResumeFix_20260905_104615.html`.
+
+---
+
+**spinning_spotify_builder.html v4.9.21 (2026-09-05) — Version Bump Catch-Up (No New Code)**
 
 **spinning_spotify_builder.html v4.9.21 (2026-09-05) — Version Bump Catch-Up (No New Code)**
 - User noticed the version badge still read v4.9.20 after two further fixes
@@ -332,7 +380,7 @@ Last updated: **2026-09-05** — `spinning_spotify_builder.html` v4.9.21: versio
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.21 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.22 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

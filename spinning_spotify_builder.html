@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.21)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.22)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.21</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.22</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1660,8 +1660,18 @@
           sessionStorage.setItem('spotify_access_token', data.access_token);
           sessionStorage.setItem('spotify_token_expires', String(Date.now() + (data.expires_in * 1000) - 60000));
           if (data.refresh_token) sessionStorage.setItem('spotify_refresh_token', data.refresh_token);
-          showToast('🟢 Signed in to Spotify — pick a playlist to import.');
-          openSpotifyImportModal();
+          const pendingAction = sessionStorage.getItem('spotify_pending_action') || 'import';
+          sessionStorage.removeItem('spotify_pending_action');
+          if (pendingAction === 'save') {
+            showToast('🟢 Signed in to Spotify — resuming Save to Spotify...');
+            saveClassToSpotify();
+          } else if (pendingAction === 'export') {
+            showToast('🟢 Signed in to Spotify — resuming export...');
+            exportCockpitForPhone();
+          } else {
+            showToast('🟢 Signed in to Spotify — pick a playlist to import.');
+            openSpotifyImportModal();
+          }
         } else {
           showToast('🟢 Spotify sign-in failed: ' + (data.error_description || 'unknown error'));
         }
@@ -1712,7 +1722,8 @@
       await beginSpotifyLogin();
     }
 
-    async function saveClassToSpotify(isRetry) {
+    async function saveClassToSpotify(isRetry, resumeAs) {
+      sessionStorage.setItem('spotify_pending_action', resumeAs || 'save');
       if (!spotifyImportSupported()) {
         showToast('🟢 Save to Spotify only works when opened from the hosted link: ' + SPOTIFY_REDIRECT_URI);
         return false;
@@ -1782,7 +1793,7 @@
             // Playlist this class was linked to no longer exists (e.g. deleted in Spotify) — start fresh once.
             window.spotifyClassPlaylistId = '';
             window.spotifyClassPlaylistUrl = '';
-            return await saveClassToSpotify(true);
+            return await saveClassToSpotify(true, resumeAs);
           }
           if (!res.ok) {
             const errBody = await res.json().catch(() => ({}));
@@ -1803,6 +1814,7 @@
     }
 
     async function openSpotifyImportFlow() {
+      sessionStorage.setItem('spotify_pending_action', 'import');
       if (!spotifyImportSupported()) {
         showToast('🟢 Playlist import only works when opened from the hosted link: ' + SPOTIFY_REDIRECT_URI);
         return;
@@ -2446,7 +2458,7 @@
       const hasSpotifyTracks = classTracks.some(t => t && extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
       if (hasSpotifyTracks) {
         showToast('🟢 Syncing Spotify playlist before export...');
-        const syncResult = await saveClassToSpotify();
+        const syncResult = await saveClassToSpotify(false, 'export');
         if (syncResult === 'redirecting') return; // navigating to Spotify sign-in; re-click Export after signing in
       }
       const title = (document.getElementById('classTitle') ? document.getElementById('classTitle').value : 'Spinning Class') || 'Spinning Class Profile';
@@ -2479,7 +2491,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.21)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.22)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2602,7 +2614,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.21_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.22_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
