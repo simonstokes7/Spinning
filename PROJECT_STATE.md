@@ -3,7 +3,41 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.40: "Use Timestamp" now reads the real live Spotify playback position via Spotify's own IFrame Controller API, instead of a manually-started stopwatch that drifted from actual playback
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.41: "Start Music" now hides itself once actually clicked (user reversed the earlier "keep it persistent" call); also fixed a real, measured 1.5px bottom-clip on the exported HUD's version badge
+
+---
+
+**spinning_spotify_builder.html v4.9.41 (2026-09-06) — Start Music Hides on Click; Version Badge Clipping Fixed**
+- **Start Music hide-on-click**: user reversed the earlier "keep it visible
+  for the whole class" decision (v4.9.39) — "hide the Start music button
+  once it has been pressed. The app is open. No more ref need." `startMusic()`
+  now hides `#mStartMusicBtn` immediately after successfully calling
+  `window.open()`; the failure path (no playlist linked yet) leaves the
+  button visible so the instructor can retry once one's linked. Verified via
+  Playwright: button starts `display:block`, calling `startMusic()` (with a
+  linked playlist) flips it to `display:none`.
+- **Version badge clipping — found and measured precisely, not guessed**:
+  user's screenshot showed "v4.9.40" visibly cut off at the bottom on a
+  freshly exported file. Used Playwright's `getBoundingClientRect()` on both
+  the badge `<span>` and its parent `.cockpit-hud-classtitle` to get exact
+  numbers rather than eyeballing it: the badge rendered 18px tall but its
+  container's line box was only 19px, with the badge's bottom edge sitting
+  1.5px *below* the container's — and since `.cockpit-hud-classtitle` has
+  `overflow: hidden` (needed for its ellipsis-truncation behavior on long
+  class titles), that sliver was being clipped every time. Root cause: no
+  explicit `line-height` was set on the container, so its auto-height (sized
+  to the plain title text) came out slightly shorter than the badge's own
+  border+padding+font box. Fixed by adding `line-height: 1.6` to
+  `.cockpit-hud-classtitle` in the export generator's CSS — confirmed via
+  the same bounding-rect measurement that the badge now sits fully inside
+  its container (badge bottom 42.09px vs. container bottom 43.75px) and via
+  a real screenshot that it renders cleanly. Checked the live builder's own
+  (separate, simpler) topbar stylesheet too — it has no `overflow: hidden`
+  at all, so it was never susceptible to this and needed no change.
+- Verified via Python esprima (0 errors) and headless Playwright (both
+  fixes independently confirmed, plus a combined run showing both together
+  with zero console errors).
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.41_HideStartMusicAndBadgeClip_20260906_084437.html`.
 
 ---
 
@@ -1079,7 +1113,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.40: "Use T
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.40 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.41 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
