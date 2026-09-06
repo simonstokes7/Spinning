@@ -3,7 +3,41 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.38: merged "Start Music" and "Start Workout" into a single pre-start button — opens Spotify and reveals the real first track paused, in one tap
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.39: removed the pre-start screen entirely — "Start Music" is now a permanent persistent button, the real HUD shows immediately on load (paused), no reveal/hide state machine needed
+
+---
+
+**spinning_spotify_builder.html v4.9.39 (2026-09-06) — Pre-Start Screen Removed Entirely**
+- Direct follow-through on a realization from the "should Start Music hide
+  once the workout starts?" discussion: since the user wants it to stay
+  visible for the whole class regardless (a permanent "reopen Spotify"
+  shortcut), the entire separate pre-start *state* (hide the real HUD,
+  show two/one buttons, reveal on tap) became pointless complexity — if
+  the button's always there anyway, just show the real HUD from the start.
+- Simplified radically: `#mPreStartButtons`/`#mHudBody` wrapper divs and
+  their `display:none`/reveal toggling are gone — `#mStartMusicBtn` is now
+  a plain, permanently-visible element sitting directly above the track
+  title, and the rest of the HUD (title/metrics/scrubber/movements/cue/
+  controls) renders normally from page load, same as every other builder.
+  `startMusic()` is back to just opening the linked playlist (or alerting
+  if none exists) — no more HUD-reveal side effects. `goBackToPreStart()`
+  is deleted outright (nothing to go back to any more) and `prevTrack()`
+  reverted to a plain `Math.max(0, activeIdx - 1)` clamp — Prev on the
+  first track now just stays on the first track, matching every other
+  builder's behavior, rather than needing a special "return to pre-start"
+  case.
+- This closes out the whole pre-start-screen arc from this session
+  (v4.9.30's two-button design → v4.9.31's centering/Prev-undo → v4.9.36's
+  paused-not-playing fix → v4.9.38's one-button merge) by removing the
+  concept's remaining justification entirely, rather than continuing to
+  refine it.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  the real first track shows immediately on load (`isPlaying: false`,
+  paused and ready), confirmed "Start Music" opens the linked playlist and
+  stays visible afterward, confirmed "Play Workout" starts it directly, and
+  confirmed Prev on track 0 simply stays at `activeIdx: 0` with the button
+  still present (no special state to restore). Zero console errors.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.39_RemovedPreStartScreen_20260906_082925.html`.
 
 ---
 
@@ -986,7 +1020,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.38: merged
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.38 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.39 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
