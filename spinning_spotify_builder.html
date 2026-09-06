@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.37)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.38)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.37</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.38</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -2501,7 +2501,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.37)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.38)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2536,7 +2536,6 @@
       parts.push('  <div class="cockpit-hud-topbar"><div class="cockpit-hud-classtitle">🚴 ' + title + ' <span style="font-size:0.68rem; color:#1db954; background:rgba(29,185,84,0.15); border:1px solid #1db954; padding:1px 6px; border-radius:4px; margin-left:4px; font-weight:900; vertical-align:middle;">' + appVer + '</span></div><div class="cockpit-total-timer" id="mTotalTimer">⏰ 0:00 / 45:00</div></div>\n');
       parts.push('  <div id="mPreStartButtons" style="flex:1; width:100%; display:flex; flex-direction:column; justify-content:center; gap:40px;">\n');
       parts.push('  <button id="mStartMusicBtn" onclick="startMusic()" style="flex:none; width:100%; box-sizing:border-box; background:#1db954; color:#000; font-family:\'Outfit\',sans-serif; font-weight:900; font-size:0.9rem; padding:10px; border-radius:20px; border:none; cursor:pointer; box-shadow:0 0 14px rgba(29,185,84,0.45); margin:4px 0;">🟢 Start Music</button>\n');
-      parts.push('  <button id="mStartWorkoutBtn" onclick="startWorkoutNow()" style="flex:none; width:100%; box-sizing:border-box; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:#00e5ff; font-family:\'Outfit\',sans-serif; font-weight:800; font-size:0.9rem; padding:10px; border-radius:20px; cursor:pointer;">▶ Start Workout</button>\n');
       parts.push('  </div>\n');
       parts.push('  <div id="mHudBody" style="display:none; width:100%; flex-direction:column; gap:8px;">\n');
       parts.push('  <div class="cockpit-hud-tracktitle" id="mTrackTitle">Track 1</div>\n');
@@ -2561,11 +2560,10 @@
       parts.push('<' + 'script>\n');
       parts.push('  const classTracks = ' + jsonStr + ';\n');
       parts.push('  const classSpotifyPlaylistUrl = ' + JSON.stringify(window.spotifyClassPlaylistUrl || '') + ';\n');
-      parts.push('  function startMusic() { if (!classSpotifyPlaylistUrl) { alert("No Spotify playlist linked to this class yet — use \\"Save to Spotify\\" or paste a playlist link in the builder first."); return; } window.open(classSpotifyPlaylistUrl, "_blank"); }\n');
+      parts.push('  function startMusic() { if (classSpotifyPlaylistUrl) { window.open(classSpotifyPlaylistUrl, "_blank"); } else { alert("No Spotify playlist linked to this class yet — use \\"Save to Spotify\\" or paste a playlist link in the builder first."); } const hudBody = document.getElementById("mHudBody"); if (hudBody) hudBody.style.display = "flex"; const preWrap = document.getElementById("mPreStartButtons"); if (preWrap) { preWrap.style.flex = "none"; preWrap.style.justifyContent = "flex-start"; } activeIdx = 0; curSec = 0; isPlaying = false; render(); }\n');
       parts.push('  const SYMBOL_ICONS = ' + symbolIconsJson + ';\n');
       parts.push('  let activeIdx = 0; let audio = new Audio(); let isPlaying = false; let fallbackTimer = null; let curSec = 0;\n');
-      parts.push('  function startWorkoutNow() { const hudBody = document.getElementById("mHudBody"); if (hudBody) hudBody.style.display = "flex"; const swBtn = document.getElementById("mStartWorkoutBtn"); if (swBtn) swBtn.style.display = "none"; const preWrap = document.getElementById("mPreStartButtons"); if (preWrap) { preWrap.style.flex = "none"; preWrap.style.justifyContent = "flex-start"; } activeIdx = 0; curSec = 0; isPlaying = false; render(); }\n');
-      parts.push('  function goBackToPreStart() { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; isPlaying = false; curSec = 0; activeIdx = 0; releaseWakeLock(); const hudBody = document.getElementById("mHudBody"); if (hudBody) hudBody.style.display = "none"; const swBtn = document.getElementById("mStartWorkoutBtn"); if (swBtn) swBtn.style.display = ""; const preWrap = document.getElementById("mPreStartButtons"); if (preWrap) { preWrap.style.flex = "1"; preWrap.style.justifyContent = "center"; } }\n');
+      parts.push('  function goBackToPreStart() { audio.pause(); if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; isPlaying = false; curSec = 0; activeIdx = 0; releaseWakeLock(); const hudBody = document.getElementById("mHudBody"); if (hudBody) hudBody.style.display = "none"; const preWrap = document.getElementById("mPreStartButtons"); if (preWrap) { preWrap.style.flex = "1"; preWrap.style.justifyContent = "center"; } }\n');
       parts.push('  function nudgeTime(delta) { if (audio && audio.src && !isNaN(audio.currentTime)) { audio.currentTime = Math.max(0, audio.currentTime + delta); } else { curSec = Math.max(0, curSec + delta); } render(); }\n');
       parts.push('  audio.addEventListener("timeupdate", () => { if (!audio.paused && !isNaN(audio.currentTime) && audio.currentTime > 0) { curSec = audio.currentTime; render(); } });\n');
       parts.push('  audio.addEventListener("ended", () => { if (activeIdx < classTracks.length - 1) { selectTrack(activeIdx + 1); } else { isPlaying = false; if (fallbackTimer) clearInterval(fallbackTimer); fallbackTimer = null; curSec = 0; audio.pause(); releaseWakeLock(); render(); } });\n');
@@ -2625,7 +2623,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.37_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.38_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

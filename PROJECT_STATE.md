@@ -3,7 +3,31 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.37: removed the legacy "Spotify Class Playlist Link & Tracklist" modal outright (superseded by Import/Save to Spotify), and removed the now-redundant duplicate "Start Workout" button from the live builder's own in-app Cockpit tab preview
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.38: merged "Start Music" and "Start Workout" into a single pre-start button — opens Spotify and reveals the real first track paused, in one tap
+
+---
+
+**spinning_spotify_builder.html v4.9.38 (2026-09-06) — Single Pre-Start Button (Start Music Does Both)**
+- Direct follow-through on the "should just have 1 button" idea raised
+  earlier this session: since neither pre-start button actually started
+  real playback any more (v4.9.36 made "Start Workout" reveal-paused-only),
+  there was no reason left to require two separate taps for two prep
+  steps. `startMusic()` now does what both used to do: opens the linked
+  Spotify playlist (or alerts if none is linked yet, same as before) **and**
+  reveals the real first track's HUD paused (`activeIdx = 0; curSec = 0;
+  isPlaying = false; render();` — the same state `startWorkoutNow()` used
+  to set up). The separate "▶ Start Workout" button is gone from the
+  pre-start markup entirely, along with the now-fully-unused
+  `startWorkoutNow()` function and the dead `mStartWorkoutBtn` references
+  inside `goBackToPreStart()` (Prev-from-track-0 still fully works — it
+  just no longer needs to un-hide a second button that no longer exists).
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  exactly one button now renders inside `#mPreStartButtons`; confirmed
+  clicking it both calls `window.open` with the correct linked playlist URL
+  and reveals the HUD paused (`activeIdx: 0`, `isPlaying: false`, real track
+  title shown); confirmed Prev-from-track-0 still correctly returns to the
+  (now single-button) pre-start screen. Zero console errors.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.38_MergedToSingleStartMusicButton_20260906_081544.html`.
 
 ---
 
@@ -962,7 +986,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.37: remove
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.37 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.38 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
