@@ -3,7 +3,45 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.36: "Start Workout" no longer auto-starts the timer — it reveals the real first track paused, so the instructor can wait for the Spotify preview track to actually end and tap the real "Play Workout" button at the precise sync moment
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.37: removed the legacy "Spotify Class Playlist Link & Tracklist" modal outright (superseded by Import/Save to Spotify), and removed the now-redundant duplicate "Start Workout" button from the live builder's own in-app Cockpit tab preview
+
+---
+
+**spinning_spotify_builder.html v4.9.37 (2026-09-06) — Legacy Tracklist Modal Removed; Duplicate Cockpit-Tab Button Removed**
+- **Tracklist modal removed outright**: user confirmed ("remove it outright
+  now that the automated flow exists") cutting the "🟢 Spotify Class
+  Playlist Link & Tracklist" feature entirely — it was doing manually
+  (paste-a-link box, per-track launch links, copy-tracklist-as-text) what
+  Import and Save to Spotify now do automatically and correctly. Removed
+  the button, `exportSpotifyPlaylistModal()`, `saveClassSpotifyPlaylistUrl()`,
+  and `copySpotifyTracklist()` entirely — confirmed via grep zero remaining
+  references to any of them or `spotifyPlaylistModal` anywhere in the file.
+  `window.spotifyClassPlaylistUrl` itself (and its autoSave/loadAutoSave/
+  saveClassJson persistence) is untouched — still populated automatically by
+  Save to Spotify and read by the exported HUD's "Start Music" button;
+  only the manual paste/copy/launch UI around it is gone.
+- **Duplicate button removed from the live builder's own Cockpit tab**: a
+  screenshot comparison (user's "make the left look like the right," which
+  turned out to mean the real exported file vs. the builder's own in-app
+  "Instructor Cockpit" phone-mockup preview — two genuinely separate render
+  paths that had drifted apart) surfaced that the in-app preview still
+  permanently showed a "▶ Start Workout" button below Prev/Play/Next, with
+  no way to hide it (unlike the exported file, which correctly hides its
+  version once the workout starts, per v4.9.30's `#mHudBody`/
+  `#mPreStartButtons` design — none of which exists in this tab's markup).
+  User confirmed directly: "Don't need this. Please remove." Removed the
+  button from the live builder's markup and deleted its now-callerless
+  `startWorkoutNow()` function from the live script (the export generator's
+  own separate `startWorkoutNow()`, used by the real exported HUD, is
+  untouched). The live Cockpit tab's normal Prev/Play Workout/Next row is
+  unaffected and still works for building/previewing a class.
+- Verified via Python esprima (0 errors) and headless Playwright: confirmed
+  zero remaining Tracklist-modal references anywhere in the file; confirmed
+  the live Cockpit tab no longer shows a "Start Workout" button while its
+  normal Play button still starts the timer correctly; confirmed a real
+  export still completes successfully with zero console errors, unaffected
+  by either removal.
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.37_RemoveLegacyTracklistAndDupeButton_20260906_080529.html`.
 
 ---
 
@@ -924,7 +962,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.36: "Start
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.36 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.37 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |

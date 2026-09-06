@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.36)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.37)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.36</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.37</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1314,11 +1314,6 @@
       </div>
 
       <div class="actions-group" style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="exportSpotifyPlaylistModal()"
-          style="font-size:0.8rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#1db954; font-weight:800; background:rgba(29,185,84,0.15);"
-          title="Save/open a link to a Spotify playlist you've already made, launch individual track links, or copy a plain-text tracklist to share">
-          🟢 Spotify Playlist Link &amp; Tracklist
-        </button>
         <button class="btn btn-outline btn-sm" onclick="openSpotifyImportFlow()"
           style="font-size:0.8rem; padding:6px 14px; white-space:nowrap; border-color:#1db954; color:#1db954; font-weight:800; background:rgba(29,185,84,0.15);"
           title="Sign in to Spotify and import all tracks from one of your playlists">
@@ -1489,11 +1484,6 @@
             <button class="cockpit-hud-btn main-play" id="cockpitPlayBtn" onclick="toggleCockpitAudio()">► Play
               Workout</button>
             <button class="cockpit-hud-btn" onclick="nextTrack()">Next ▶</button>
-          </div>
-          <div style="width:100%; margin-top:6px; display:flex; justify-content:center;">
-            <button onclick="startWorkoutNow()"
-              style="width:100%; background:rgba(0,229,255,0.12); border:1px solid rgba(0,229,255,0.4); color:var(--accent-cyan); font-family:'Outfit',sans-serif; font-weight:800; font-size:0.82rem; padding:8px 12px; border-radius:8px; cursor:pointer;"
-              title="Jump straight to the first real track and start the workout timer">▶ Start Workout</button>
           </div>
 
         </div>
@@ -2511,7 +2501,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.36)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.37)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2635,7 +2625,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.36_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.37_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2778,14 +2768,6 @@
     let isCockpitTimerRunning = false;
     let cockpitTimerInterval = null;
     let cockpitElapsedSec = 0;
-    function startWorkoutNow() {
-      const targetIdx = (classTracks[0] && classTracks[0].isLeadIn) ? 1 : 0;
-      cockpitElapsedSec = 0;
-      activeCockpitTrackIdx = targetIdx;
-      if (isCockpitTimerRunning) pauseCockpitTimer();
-      startCockpitTimer(targetIdx);
-      renderCockpit();
-    }
 
     function nudgeCockpitTime(secDelta) {
       if (playingAudioTrackIdx >= 0 && audioPlayer && !isNaN(audioPlayer.currentTime)) {
@@ -4838,85 +4820,6 @@
       if (!track) return;
       track.showSpotifyEmbed = !track.showSpotifyEmbed;
       renderTracks();
-    }
-
-    function exportSpotifyPlaylistModal() {
-      let tracksWithSpotify = classTracks.filter(t => t && extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId));
-      let modalEl = document.getElementById('spotifyPlaylistModal');
-      if (!modalEl) {
-        modalEl = document.createElement('div');
-        modalEl.id = 'spotifyPlaylistModal';
-        modalEl.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); z-index:99999; justify-content:center; align-items:center;';
-        document.body.appendChild(modalEl);
-      }
-
-      const curPlUrl = window.spotifyClassPlaylistUrl || '';
-
-      let tracksListHtml = '';
-      if (tracksWithSpotify.length === 0) {
-        tracksListHtml =
-          '<p style="font-size:0.85rem; color:#cbd5e1; margin:10px 0;">No individual tracks have Spotify URLs attached yet.</p>' +
-          '<p style="font-size:0.8rem; color:var(--text-muted);">Tip: Use <code>🟢 Add Spotify Link</code> on track cards or paste a Full Class Spotify Playlist URL above!</p>';
-      } else {
-        tracksListHtml =
-          '<p style="font-size:0.85rem; color:#cbd5e1; margin:10px 0 6px 0;">Individual Track Spotify Links (' + tracksWithSpotify.length + ' tracks):</p>' +
-          '<div style="max-height:180px; overflow-y:auto; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; margin-bottom:14px;">' +
-          tracksWithSpotify.map((t, i) => {
-            const id = extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId);
-            return '<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.82rem;">' +
-              '<span><strong>' + (i + 1) + '. ' + (t.name || 'Track') + '</strong> - ' + (t.artist || '') + ' (' + (t.bpm || '120') + ' BPM)</span>' +
-              '<a href="https://open.spotify.com/track/' + id + '" target="_blank" style="color:#1db954; font-weight:800; text-decoration:none;">🟢 Launch</a>' +
-              '</div>';
-          }).join('') +
-          '</div>';
-      }
-
-      modalEl.innerHTML =
-        '<div style="background:#0f172a; border:1px solid #1db954; border-radius:16px; padding:24px; max-width:560px; width:90%; box-shadow:0 0 35px rgba(29,185,84,0.35); color:#fff; font-family:\'Outfit\',sans-serif;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">' +
-        '<h3 style="margin:0; font-size:1.2rem; color:#1db954; display:flex; align-items:center; gap:8px;">🟢 Spotify Class Playlist & Tracklist</h3>' +
-        '<button onclick="document.getElementById(\'spotifyPlaylistModal\').style.display=\'none\'" style="background:none; border:none; color:#aaa; font-size:1.4rem; cursor:pointer;">✕</button>' +
-        '</div>' +
-        '<div style="background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.3); border-radius:10px; padding:12px; margin-bottom:14px;">' +
-        '<div style="font-size:0.82rem; font-weight:800; color:#1db954; margin-bottom:6px;">🟢 Full Class Spotify Playlist Link:</div>' +
-        '<div style="display:flex; gap:8px;">' +
-        '<input type="text" id="classSpotifyPlaylistInput" value="' + curPlUrl + '" placeholder="Paste Spotify Playlist Link (e.g. https://open.spotify.com/playlist/...)" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.5); border:1px solid #1db954; border-radius:6px; color:#fff; font-size:0.82rem; font-weight:600; outline:none;" />' +
-        '<button onclick="saveClassSpotifyPlaylistUrl()" style="background:#1db954; border:none; color:#000; font-size:0.8rem; font-weight:900; padding:6px 12px; border-radius:6px; cursor:pointer;">Save Link</button>' +
-        '</div>' +
-        (curPlUrl ? ('<div style="margin-top:8px;"><a href="' + curPlUrl + '" target="_blank" style="display:inline-block; background:#1db954; color:#000; font-weight:900; font-size:0.85rem; padding:8px 16px; border-radius:20px; text-decoration:none; box-shadow:0 0 12px rgba(29,185,84,0.4);">🟢 Open Full Playlist in Spotify App ➔</a></div>') : '') +
-        '</div>' +
-        tracksListHtml +
-        '<div style="display:flex; justify-content:flex-end; gap:10px;">' +
-        '<button onclick="copySpotifyTracklist()" style="background:rgba(29,185,84,0.2); border:1px solid #1db954; color:#fff; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">📋 Copy Tracklist</button>' +
-        '<button onclick="document.getElementById(\'spotifyPlaylistModal\').style.display=\'none\'" style="background:#1db954; border:none; color:#000; padding:8px 20px; border-radius:8px; font-weight:900; cursor:pointer;">Done</button>' +
-        '</div>' +
-        '</div>';
-
-      modalEl.style.display = 'flex';
-    }
-
-    function saveClassSpotifyPlaylistUrl() {
-      const inputEl = document.getElementById('classSpotifyPlaylistInput');
-      if (inputEl) {
-        window.spotifyClassPlaylistUrl = inputEl.value.trim();
-        autoSave();
-        showToast('🟢 Class Spotify Playlist Link Saved!');
-        exportSpotifyPlaylistModal();
-      }
-    }
-
-    function copySpotifyTracklist() {
-      const list = classTracks.map((t, i) => {
-        const id = extractSpotifyTrackId(t.spotifyUrl || t.spotifyTrackId);
-        const linkStr = id ? (' -> https://open.spotify.com/track/' + id) : '';
-        return (i + 1) + '. ' + (t.name || 'Track ' + (i + 1)) + ' - ' + (t.artist || 'Artist') + ' (' + (t.bpm || '120') + ' BPM)' + linkStr;
-      }).join('\n');
-
-      navigator.clipboard.writeText(list).then(() => {
-        showToast('📋 Spotify tracklist copied to clipboard!');
-      }).catch(() => {
-        showToast('📋 Copied!');
-      });
     }
 
     // SoundCloud Integration Logic (v4.9.01)
