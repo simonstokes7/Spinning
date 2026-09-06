@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spinning® Spotify Class Builder (v4.9.39)</title>
+  <title>Spinning® Spotify Class Builder (v4.9.40)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -1281,7 +1281,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.39</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.40</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1587,6 +1587,38 @@
     // hits Start Music, this plays first, and once it ends into the real
     // first class song they press Play Workout to start the HUD in sync.
     const SPOTIFY_PREVIEW_TRACK_ID = '5tl3hb6hZkPNAwrrV9NswE';
+
+    // Real live playback position for "Toggle Widget" embeds, via Spotify's
+    // own IFrame Controller API (the <script src=".../iframe-api/v1"> tag in
+    // <head>) — used by useTimestamp() so it reflects the actual song
+    // position instead of a manually-started stopwatch.
+    let SPOTIFY_IFRAME_API = null;
+    window.__spotifyControllers = {};
+    window.__spotifyPositions = {};
+    window.onSpotifyIframeApiReady = (IFrameAPI) => { SPOTIFY_IFRAME_API = IFrameAPI; };
+
+    function mountSpotifyControllers() {
+      if (!SPOTIFY_IFRAME_API) return;
+      classTracks.forEach((track, tIdx) => {
+        if (!track || !track.showSpotifyEmbed) return;
+        const spotifyId = extractSpotifyTrackId(track.spotifyUrl || track.spotifyTrackId);
+        if (!spotifyId) return;
+        const placeholder = document.getElementById('spotifyEmbedPlaceholder_' + tIdx);
+        if (!placeholder || placeholder.__mounted) return;
+        placeholder.__mounted = true;
+        SPOTIFY_IFRAME_API.createController(placeholder, { uri: 'spotify:track:' + spotifyId, width: '100%', height: '152' }, (controller) => {
+          window.__spotifyControllers[tIdx] = controller;
+          controller.addListener('playback_update', (e) => {
+            window.__spotifyPositions[tIdx] = {
+              positionMs: e.data.position,
+              durationMs: e.data.duration,
+              isPaused: e.data.isPaused,
+              updatedAt: Date.now()
+            };
+          });
+        });
+      });
+    }
 
     function spotifyImportSupported() {
       return (window.location.origin + window.location.pathname) === SPOTIFY_REDIRECT_URI;
@@ -2501,7 +2533,7 @@
       let parts = [];
       parts.push('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n');
       parts.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n');
-      parts.push('<title>Spinning® Spotify Class Builder (v4.9.39)</title>\n');
+      parts.push('<title>Spinning® Spotify Class Builder (v4.9.40)</title>\n');
       parts.push('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">\n');
       parts.push('<script src="https://w.soundcloud.com/player/api.js"><' + '/script>\n');
       parts.push('<style>\n');
@@ -2618,7 +2650,7 @@
       const blob = new Blob([parts.join('')], { type: 'text/html' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Spinning_Spotify_v4.9.39_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
+      a.download = 'Spinning_Spotify_v4.9.40_' + (title.replace(/[^a-z0-9_-]/gi, '_')) + '_Mobile_Cockpit.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2968,7 +3000,7 @@
 
         const spotifyEmbedHtml = (track.showSpotifyEmbed && spotifyId) ?
           ('<div style="margin-bottom:10px; border-radius:12px; overflow:hidden; border:1px solid #1db954;">' +
-            '<iframe src="https://open.spotify.com/embed/track/' + spotifyId + '?utm_source=generator&theme=0" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>' +
+            '<div id="spotifyEmbedPlaceholder_' + tIdx + '" style="width:100%; height:152px;"></div>' +
             '</div>') : '';
 
         card.className = 'track-card';
@@ -3041,6 +3073,8 @@
         addBtnWrap.innerHTML = '<button type="button" class="btn" onclick="addNewTrack()" style="background:linear-gradient(135deg, var(--accent-cyan), #00b0ff); color:#000; font-weight:800; font-size:1.05rem; padding:12px 30px; border-radius:30px; border:none; cursor:pointer; box-shadow:0 4px 18px rgba(0,229,255,0.35); transition:all 0.2s;">➕ Add New Track</button>';
         container.appendChild(addBtnWrap);
       }
+
+      mountSpotifyControllers();
     }
 
     function renderSummaryTable() {
@@ -3376,6 +3410,19 @@
     function useTimestamp(tIdx) {
       const track = classTracks[tIdx];
       if (!track) return;
+
+      // 0. Real live Spotify playback position, if this track's widget is
+      // toggled on and has reported at least one position update.
+      const spotifyPos = window.__spotifyPositions && window.__spotifyPositions[tIdx];
+      if (track.showSpotifyEmbed && spotifyPos && typeof spotifyPos.positionMs === 'number') {
+        const curSec = spotifyPos.positionMs / 1000;
+        const mins = Math.floor(curSec / 60);
+        const secs = Math.floor(curSec % 60);
+        const timeStr = mins + ':' + (secs < 10 ? '0' : '') + secs;
+        applyTimestampToSlot(tIdx, timeStr);
+        showToast('⏱️ Timestamp captured from live Spotify playback: ' + timeStr);
+        return;
+      }
 
       // 1. Check local MP3 audio if present
       if (playingAudioTrackIdx === tIdx && audioPlayer && !isNaN(audioPlayer.currentTime) && audioPlayer.currentTime > 0) {

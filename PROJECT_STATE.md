@@ -3,7 +3,66 @@
 Living status file. Update it at the end of any session that changes code, versions,
 or working practice. Newest entry first in the log.
 
-Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.39: removed the pre-start screen entirely — "Start Music" is now a permanent persistent button, the real HUD shows immediately on load (paused), no reveal/hide state machine needed
+Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.40: "Use Timestamp" now reads the real live Spotify playback position via Spotify's own IFrame Controller API, instead of a manually-started stopwatch that drifted from actual playback
+
+---
+
+**spinning_spotify_builder.html v4.9.40 (2026-09-06) — Real Spotify Playback Position for "Use Timestamp"**
+- User reported "Use Timestamp" values were "all over the place" and
+  confirmed it wasn't reflecting real playback position. Root cause: for a
+  Spotify track there was never any way to read actual playback position at
+  all — unlike a local MP3 (`audioPlayer.currentTime`, a real live number),
+  a Spotify track only ever had a manually-started `Date.now()`-based
+  stopwatch (first tap on a track = start counting from 0, every later tap
+  = however many real-world seconds have passed since — completely
+  detached from wherever the song actually was, drifting on every pause,
+  re-listen, or track switch).
+- Asked the user for effort/reliability tradeoffs before building rather
+  than assuming: build cost estimated as moderate (~1-2 hours, confined to
+  the builder's own "Toggle Widget" preview — the exported HUD doesn't have
+  this feature at all), reliability assessed as good since it's Spotify's
+  own documented first-party API (not a scraped/reverse-engineered
+  endpoint like the REST APIs that had just been restructured), with the
+  one caveat that this assistant couldn't test a real live embed stream in
+  its own sandbox the way `fetch()` calls were mockable all session — user
+  confirmed to build it anyway.
+- **Implementation**: the `<script src=".../iframe-api/v1">` tag was already
+  loaded in `<head>` but entirely unused all session — now
+  `window.onSpotifyIframeApiReady` captures the real `IFrameAPI` once
+  Spotify's script finishes loading. `toggleSpotifyEmbed()`'s markup
+  changed from a raw `<iframe src="...">` string to an empty placeholder
+  `<div id="spotifyEmbedPlaceholder_{tIdx}">`; a new
+  `mountSpotifyControllers()` (called once at the end of every
+  `renderTracks()`) finds any track with `showSpotifyEmbed` true, and — if
+  not already mounted (`placeholder.__mounted` guard, since `renderTracks()`
+  can rerun while a widget stays open) — calls
+  `IFrameAPI.createController(placeholder, {uri: 'spotify:track:'+id}, ...)`,
+  which replaces the placeholder with Spotify's real controllable player and
+  hands back a `controller`. A `playback_update` listener on that
+  controller caches `{positionMs, durationMs, isPaused}` into
+  `window.__spotifyPositions[tIdx]` on every update. `useTimestamp()` now
+  checks that cache first (only for a track whose widget is actually
+  toggled on and has reported at least one update) before falling through
+  to the existing local-MP3 check and, only as a last resort, the old
+  stopwatch — so degrade is graceful if the IFrame API is ever blocked
+  (ad-blockers, strict privacy settings) or hasn't loaded yet.
+- Verified via Python esprima (0 errors) and headless Playwright — with the
+  honest caveat repeated from the earlier discussion: this stubs
+  `SPOTIFY_IFRAME_API` with a fake controller (since a real cross-origin
+  Spotify embed can't be driven in this sandbox) to verify the *wiring* is
+  correct, not real Spotify server behavior. Confirmed: toggling a track's
+  widget calls `createController` with the correct `spotify:track:` URI and
+  mounts into the right placeholder; a simulated `playback_update` event
+  (45.23s) correctly lands in `window.__spotifyPositions[0]`; `useTimestamp()`
+  correctly writes `"0:45"` from that real position rather than the
+  stopwatch; and, separately, with `SPOTIFY_IFRAME_API` set to `null`
+  (simulating a blocked/unloaded API), confirmed `useTimestamp()` still
+  falls through cleanly to the stopwatch (`"0:00"` on first tap, unchanged
+  from before). Also confirmed a normal page load and a real export both
+  still complete with zero console errors, unaffected by any of this.
+  **The first real test of actual Spotify server behavior will be the
+  user trying it live.**
+- Snapshot: `Backups/spinning_spotify_builder_v4.9.40_RealSpotifyTimestampAPI_20260906_083355.html`.
 
 ---
 
@@ -1020,7 +1079,7 @@ Last updated: **2026-09-06** — `spinning_spotify_builder.html` v4.9.39: remove
 | `spinning_local_builder.html` | **ACTIVE** — Local Version (100% Local MP3 Only, Zero SoundCloud), the reference lineage new features land on first | v5.0.50 (Local) |
 | `spinning_singlemix_builder.html` | **ACTIVE** — SingleMix Version, forked from Local. For Karen-style classes premixed by the instructor into one continuous audio file: Track 1 is the sole audio owner, every other track is auto-linked and plays through segment boundaries without reloading/restarting audio, driven by one shared "🎵 Mix Audio" player panel (shows whole-file position, not per-song). Movement timestamps are absolute mix-time; slot 1 is locked (not editable) to the previous track's start + duration, self-healing via `enforceSingleMixLinks()`/`recomputeMixOffsets()` on every load. Adds a per-movement %Effort field (defaulted from `Docs & Guides/Class Design Quick Reference.jpg`, overridable, always displayed with a trailing "%"). BPM is deliberately reference-only here (speed always 1.0x for mix-linked tracks), so it was excluded from the BPM wall-clock display work below. Export offers two modes: the default self-contained "⚡ Export Mobile Cockpit HTML" (audio baked in) and a new "📎 Export Lightweight" variant whose exported HUD opens on an in-file Attach page to pick the mix MP3 from the phone itself (in-memory only, not persisted). | v0.4.0 (SingleMix) |
 | `spinning_multisource_builder.html` | **ACTIVE** — Multi-Source Class Builder (Local MP3 + SoundCloud) | v5.0.48 |
-| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.39 |
+| `spinning_spotify_builder.html` | **ACTIVE** — Spotify Class Builder (Spotify as dedicated music source). Hosted copy at `https://simonstokes7.github.io/Spinning/spinning_spotify_builder.html` is the one usable for "🟢 Import Spotify Playlist" / "💾 Save to Spotify" (PKCE login needs a real redirect URI, won't work opened as a local file) — must stay pushed/in sync with this file. | v4.9.40 |
 | `8n12_builder.html` | **ACTIVE** — 8n12 Version (spin, 100% Local MP3, 8n12 Branding) | v5.0.59 (8n12) |
 | `8n12_weights_builder.html` | **ACTIVE** — 8n12 Weights variant (Gear+RPM replaced with a single Weight field) | v0.5.3 (8n12-Weights) |
 | `Backups/` | One timestamped snapshot per released version, **plus** (as of 2026-08-31) the retired root duplicates below | — |
