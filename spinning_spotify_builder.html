@@ -1299,7 +1299,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.48</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.49</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -4724,6 +4724,35 @@
     async function fetchSpotifyTrackMetadata(track, spotifyUrl, tIdx) {
       if (!track || !spotifyUrl) return;
       const cleanUrl = spotifyUrl.split('?')[0];
+      let durationSynced = false;
+      // Duration: the IFrame widget's playback_update event (used previously)
+      // only ever fires once the instructor actually presses play inside that
+      // specific embedded widget — it never fires from oEmbed data, an
+      // external Spotify tab/app, or just having the widget open. That left
+      // Duration stuck on its placeholder for anyone who links a track without
+      // pressing play in-widget. The authenticated Web API's single-track
+      // endpoint returns duration_ms directly with no playback required, and
+      // this app already holds a Spotify access token (used for saving/
+      // importing playlists) whenever the instructor is signed in — reuse it
+      // here instead.
+      try {
+        const spotifyId = extractSpotifyTrackId(cleanUrl);
+        const token = spotifyId ? await getValidSpotifyAccessToken() : null;
+        if (token) {
+          const trackRes = await fetch('https://api.spotify.com/v1/tracks/' + spotifyId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (trackRes.ok) {
+            const trackData = await trackRes.json();
+            if (trackData.duration_ms > 0) {
+              track.duration = msToTrackDuration(trackData.duration_ms);
+              durationSynced = true;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Spotify track duration fetch note:', e);
+      }
       try {
         const oembedUrl = 'https://open.spotify.com/oembed?url=' + encodeURIComponent(cleanUrl);
         const res = await fetch(oembedUrl);
@@ -4740,23 +4769,25 @@
           if (data.artist_name || data.author_name) {
             track.artist = data.artist_name || data.author_name;
           }
-          renderTracks();
-          autoSave();
-          if (track.artist) {
-            showToast('🟢 Updated Track: "' + (track.name || '') + '" by ' + track.artist);
-          } else {
-            // No automatic source for artist here — make that obvious instead
-            // of leaving a silently-blank field, and put the cursor right in
-            // the artist box so typing it is the very next action.
-            showToast('🟢 Title filled: "' + (track.name || '') + '" — Spotify doesn\'t provide artist via link data, please add it below');
-            if (typeof tIdx === 'number') {
-              const artistInput = document.getElementById('artistInput_' + tIdx);
-              if (artistInput) { artistInput.focus(); artistInput.select(); }
-            }
-          }
         }
       } catch (e) {
         console.warn('Spotify oEmbed fetch note:', e);
+      }
+      renderTracks();
+      autoSave();
+      if (durationSynced) updateStats();
+      const durationNote = durationSynced ? (' (' + track.duration + ')') : '';
+      if (track.artist) {
+        showToast('🟢 Updated Track: "' + (track.name || '') + '" by ' + track.artist + durationNote);
+      } else {
+        // No automatic source for artist here — make that obvious instead
+        // of leaving a silently-blank field, and put the cursor right in
+        // the artist box so typing it is the very next action.
+        showToast('🟢 Title filled: "' + (track.name || '') + '"' + durationNote + ' — Spotify doesn\'t provide artist via link data, please add it below');
+        if (typeof tIdx === 'number') {
+          const artistInput = document.getElementById('artistInput_' + tIdx);
+          if (artistInput) { artistInput.focus(); artistInput.select(); }
+        }
       }
     }
 
