@@ -1299,7 +1299,7 @@
       <div class="logo-group">
         <div class="logo-badge" style="background:#1db954; color:#000;">🟢</div>
         <div class="title-group">
-          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.49</span></h1>
+          <h1 style="font-size:1.4rem; margin:0; color:#fff; display:flex; align-items:center; gap:10px;">Spinning® Spotify Class Builder <span class="version-badge">v4.9.50</span></h1>
           <div
             style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">
             📝 Class Profile Title:</div>
@@ -1755,6 +1755,13 @@
           } else if (pendingAction === 'export') {
             showToast('🟢 Signed in to Spotify — resuming export...');
             exportCockpitForPhone();
+          } else if (pendingAction.indexOf('sync-duration:') === 0) {
+            const tIdx = Number(pendingAction.slice('sync-duration:'.length));
+            const track = classTracks[tIdx];
+            if (track && track.spotifyUrl) {
+              showToast('🟢 Signed in to Spotify — syncing Duration...');
+              fetchSpotifyTrackMetadata(track, track.spotifyUrl, tIdx);
+            }
           } else {
             showToast('🟢 Signed in to Spotify — pick a playlist to import.');
             openSpotifyImportModal();
@@ -4738,6 +4745,22 @@
       try {
         const spotifyId = extractSpotifyTrackId(cleanUrl);
         const token = spotifyId ? await getValidSpotifyAccessToken() : null;
+        if (spotifyId && !token && !sessionStorage.getItem('spotify_duration_signin_declined')) {
+          // No token yet — rather than silently leaving Duration on its
+          // placeholder with no explanation, ask once per session whether to
+          // sign in now. A "yes" hands off to the same PKCE login redirect
+          // used elsewhere, tagged with this track's index so
+          // handleSpotifyAuthRedirect() can resume the sync automatically
+          // once the instructor is back, instead of requiring a manual
+          // second Change Link.
+          const wantsSignIn = confirm('🎵 Sign in to Spotify to auto-fill this track\'s real Duration?\n\n(Otherwise Duration stays at its placeholder value until you sign in and link this track again.)');
+          if (wantsSignIn) {
+            sessionStorage.setItem('spotify_pending_action', 'sync-duration:' + tIdx);
+            await beginSpotifyLogin();
+            return;
+          }
+          sessionStorage.setItem('spotify_duration_signin_declined', '1');
+        }
         if (token) {
           const trackRes = await fetch('https://api.spotify.com/v1/tracks/' + spotifyId, {
             headers: { 'Authorization': 'Bearer ' + token }
